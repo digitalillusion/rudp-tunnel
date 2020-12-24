@@ -1,0 +1,18 @@
+[package]
+name = "rudp-tunnel"
+version = "0.1.0"
+authors = ["adriano.dalpane <adriano.dalpane@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+getopts = "0.2.21"
+aeron-rs = "0.1.3"
+ctrlc = "3.1.4"
+chrono = "0.4.11"
+lazy_static = "1.4.0"
+pretty_env_logger = "0.4.0"
+
+
+nix = "0.17.0"
