@@ -390,9 +390,6 @@ dependencies = [
  "chrono",
  "ctrlc",
  "getopts",
- "lazy_static",
- "nix 0.17.0",
- "pretty_env_logger",
 ]
 
 [[package]]

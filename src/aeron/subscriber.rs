@@ -1,7 +1,8 @@
 use std::{
     ffi::CString,
-    sync::atomic::{AtomicBool, Ordering},
 };
+use std::cell::RefCell;
+use std::sync::{Arc, Mutex};
 
 use aeron_rs::{
     aeron::Aeron,
@@ -12,19 +13,11 @@ use aeron_rs::{
     image::Image,
     utils::{errors::AeronError},
 };
-use lazy_static::lazy_static;
-use crate::aeron::{Settings, str_to_c};
-use std::sync::{Mutex, Arc};
-use aeron_rs::subscription::Subscription;
 use aeron_rs::concurrent::atomic_buffer::AtomicBuffer;
 use aeron_rs::concurrent::logbuffer::header::Header;
-use aeron_rs::concurrent::strategies::{SleepingIdleStrategy, Strategy};
-use std::cell::{RefCell};
+use aeron_rs::subscription::Subscription;
 
-lazy_static! {
-    pub static ref RUNNING: AtomicBool = AtomicBool::from(true);
-}
-
+use crate::aeron::{Settings, str_to_c};
 
 fn on_new_subscription_handler(channel: CString, stream_id: i32, correlation_id: i64) {
     println!("Subscription: {} {} {}", channel.to_str().unwrap(), stream_id, correlation_id);
@@ -57,11 +50,12 @@ fn error_handler(error: AeronError) {
 pub struct Subscriber {
     aeron: RefCell<Aeron>,
     settings: Settings,
+    channel: String,
 }
 
 impl Subscriber {
-    pub fn new(settings: Settings) -> Result<Self, Option<AeronError>> {
-        println!("Subscribing Pong at {} on Stream ID {}", settings.channel, settings.stream_id);
+    pub fn new(settings: Settings, channel: String) -> Result<Self, Option<AeronError>> {
+        println!("Subscribing Pong at {} on Stream ID {}", channel, settings.stream_id);
 
         let mut context = Context::new();
 
@@ -84,14 +78,13 @@ impl Subscriber {
         }
         Ok(Self {
             aeron: RefCell::new(aeron.unwrap()),
-            settings
+            settings,
+            channel
         })
     }
 
-    pub fn listen(self: &Self, mut on_new_fragment: &dyn Fn(&AtomicBuffer, i32, i32, &Header) -> ()) {
-        let idle_strategy = SleepingIdleStrategy::new(1000);
-
-        let subscription = self.create_subscription().unwrap();
+    pub fn listen(self: &Self) -> Arc<Mutex<Subscription>> {
+        let subscription = self.create_subscription().expect("Error creating subscription");
         let channel_status = subscription.lock().unwrap().channel_status();
 
         println!(
@@ -100,16 +93,17 @@ impl Subscriber {
             channel_status_to_str(channel_status)
         );
 
-        while RUNNING.load(Ordering::SeqCst) {
-            let fragments_read = subscription.lock().unwrap().poll(&mut on_new_fragment, 10);
-            idle_strategy.idle_opt(fragments_read);
-        }
+        subscription
+    }
+
+    pub fn recv(self: &Self, subscription: Arc<Mutex<Subscription>>, mut on_new_fragment: &dyn Fn(&AtomicBuffer, i32, i32, &Header) -> ()) {
+        subscription.lock().unwrap().poll(&mut on_new_fragment, 10);
     }
 
     fn create_subscription(self: &Self) -> Result<Arc<Mutex<Subscription>>, AeronError> {
         let mut aeron = self.aeron.borrow_mut();
         let subscription_id = aeron
-            .add_subscription(str_to_c(&self.settings.channel), self.settings.stream_id)
+            .add_subscription(str_to_c(&self.channel), self.settings.stream_id)
             .expect("Error adding subscription");
 
         let mut subscription = aeron.find_subscription(subscription_id);

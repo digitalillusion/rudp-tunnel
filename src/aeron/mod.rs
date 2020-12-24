@@ -1,17 +1,17 @@
+use std::ffi::CString;
+
+use aeron_rs::{
+    example_config::{DEFAULT_MESSAGE_LENGTH, DEFAULT_STREAM_ID},
+};
+
 use crate::Arguments;
 
 pub(crate) mod publisher;
 pub(crate) mod subscriber;
 
-use aeron_rs::{
-    example_config::{DEFAULT_MESSAGE_LENGTH, DEFAULT_STREAM_ID},
-};
-use std::ffi::CString;
-
 #[derive(Clone)]
 pub struct Settings {
     dir_prefix: String,
-    channel: String,
     port: i32,
     stream_id: i32,
     number_of_warmup_messages: i64,
@@ -24,7 +24,6 @@ impl Settings {
     pub fn new(args: Arguments) -> Self {
         Self {
             dir_prefix: String::new(),
-            channel: format!("aeron:udp?endpoint={}", args.channel),
             port: args.port,
             stream_id: DEFAULT_STREAM_ID.parse().unwrap(),
             number_of_warmup_messages: 0,

@@ -10,7 +10,8 @@ pub enum Mode {
 #[derive(Clone)]
 pub struct  Arguments {
     pub port: i32,
-    pub channel: String,
+    pub forward: String,
+    pub backward: String,
     pub tunnel: String,
 }
 

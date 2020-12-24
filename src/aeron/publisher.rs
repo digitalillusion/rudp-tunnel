@@ -1,7 +1,8 @@
 use std::{
     ffi::CString,
-    sync::atomic::{AtomicBool, Ordering},
 };
+use std::cell::RefCell;
+use std::sync::{Arc, Mutex};
 
 use aeron_rs::{
     aeron::Aeron,
@@ -11,20 +12,10 @@ use aeron_rs::{
     context::Context,
     utils::errors::AeronError,
 };
-use lazy_static::lazy_static;
-use aeron_rs::concurrent::atomic_buffer::{AtomicBuffer, AlignedBuffer};
-use crate::aeron::{Settings, str_to_c};
-use std::cell::{RefCell};
-use std::sync::{Arc, Mutex};
+use aeron_rs::concurrent::atomic_buffer::{AlignedBuffer, AtomicBuffer};
 use aeron_rs::publication::Publication;
 
-lazy_static! {
-    pub static ref RUNNING: AtomicBool = AtomicBool::from(true);
-}
-
-fn sig_int_handler() {
-    RUNNING.store(false, Ordering::SeqCst);
-}
+use crate::aeron::{Settings, str_to_c};
 
 fn error_handler(error: AeronError) {
     println!("Error: {:?}", error);
@@ -40,28 +31,15 @@ fn on_new_publication_handler(channel: CString, stream_id: i32, session_id: i32,
     );
 }
 
-
-
 pub struct Publisher {
     aeron: RefCell<Aeron>,
     settings: Settings,
+    channel: String,
 }
 
-
-
 impl Publisher {
-    pub fn new(settings: Settings) -> Result<Self, Option<AeronError>> {
-        pretty_env_logger::init();
-        ctrlc::set_handler(move || {
-            println!("received Ctrl+C!");
-            sig_int_handler();
-        })
-            .expect("Error setting Ctrl-C handler");
-
-        println!(
-            "Publishing to channel {} on Stream ID {}",
-            settings.channel, settings.stream_id
-        );
+    pub fn new(settings: Settings, channel: String) -> Result<Self, Option<AeronError>> {
+        println!("Subscribing Ping at {} on Stream ID {}", channel, settings.stream_id);
 
         let mut context = Context::new();
 
@@ -82,12 +60,13 @@ impl Publisher {
         }
         Ok(Self {
             aeron: RefCell::new(aeron.unwrap()),
-            settings
+            settings,
+            channel,
         })
     }
 
-    pub fn publish (self: &Self, buffer: [u8; 256], buffer_size: i32) {
-        let publication = self.create_pubblication().unwrap();
+    pub fn publish (self: &Self) -> Arc<Mutex<Publication>> {
+        let publication = self.create_pubblication().expect("Error creating publication");
         let channel_status = publication.lock().unwrap().channel_status();
 
         println!(
@@ -96,15 +75,18 @@ impl Publisher {
             channel_status_to_str(channel_status)
         );
 
-        let src_buffer = AtomicBuffer::from_aligned(&AlignedBuffer::with_capacity(256));
+        publication
+    }
+
+    pub fn send(self: &Self, publication: Arc<Mutex<Publication>>, buffer: [u8; 256], buffer_size: i32) {
+        let aligned_buffer = AlignedBuffer::with_capacity(256);
+        let src_buffer = AtomicBuffer::from_aligned(&aligned_buffer);
         src_buffer.put_bytes(0, &buffer);
 
         let result = publication.lock().unwrap().offer_part(src_buffer, 0, buffer_size);
 
-        if let Ok(code) = result {
-            println!("Sent with code {}!", code);
-        } else {
-            println!("Offer with error: {:?}", result.err());
+        if let Err(error) = result {
+            println!("Offer with error: {:?}", error);
         }
 
         if !publication.lock().unwrap().is_connected() {
@@ -116,7 +98,7 @@ impl Publisher {
         let mut aeron = self.aeron.borrow_mut();
         // add the publication to start the process
         let publication_id = aeron
-            .add_publication(str_to_c(&self.settings.channel), self.settings.stream_id)
+            .add_publication(str_to_c(&self.channel), self.settings.stream_id)
             .expect("Error adding publication");
 
         let mut publication = aeron.find_publication(publication_id);
