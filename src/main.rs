@@ -22,15 +22,17 @@ fn parse_args() -> Option<(Mode, Arguments)> {
     opts.optflag("h", "help", "Show this usage message.");
     opts.optopt("p", "port", "Port to bind onto (client).", "PORT");
     opts.optopt("t", "tunnel", "Network address where to tunnel packets (server)", "TUNNEL");
-    opts.optopt("f", "forward", "Aeron forward channel, defaults to 0.0.0.0:40123", "FORWARD");
-    opts.optopt("b", "backward", "Aeron backward channel, defaults to 0.0.0.0:32104", "BACKWARD");
+    opts.optopt("c", "channel", "Aeron host for forward and backward channels, defaults to 0.0.0.0", "CHANNEL");
+    opts.optopt("f", "forward", "Aeron forward channel, defaults to CHANNEL:40123", "FORWARD");
+    opts.optopt("b", "backward", "Aeron backward channel, defaults to CHANNEL:32104", "BACKWARD");
 
     match opts.parse(&args[1..]) {
         Ok(matches)  => {
+            let channel = matches.opt_str("channel").unwrap_or(String::from("0.0.0.0"));
             let arguments = Arguments {
-                forward: matches.opt_str("forward").unwrap_or(String::from("localhost:40123")),
-                backward: matches.opt_str("backward").unwrap_or(String::from("localhost:32104")),
-                tunnel: matches.opt_str("tunnel").unwrap_or(String::from("0.0.0.0:0")),
+                forward: matches.opt_str("forward").unwrap_or(String::from(format!("{}:40123", channel))),
+                backward: matches.opt_str("backward").unwrap_or(String::from(format!("{}:32104", channel))),
+                tunnel: matches.opt_str("tunnel").unwrap_or(String::from(format!("{}:0", channel))),
                 port: matches.opt_str("port").unwrap_or(String::from("0")).parse().expect("Error parsing binding port"),
             };
             if matches.opt_present("port") {

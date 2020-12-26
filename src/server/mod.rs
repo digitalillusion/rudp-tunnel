@@ -8,7 +8,6 @@ use aeron_rs::utils::types::Index;
 
 use crate::aeron::Settings;
 use crate::Arguments;
-use std::process::{Child, Command};
 
 pub fn instance (args: Arguments) {
     let settings = Settings::new(args.clone());

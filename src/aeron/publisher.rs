@@ -39,7 +39,7 @@ pub struct Publisher {
 
 impl Publisher {
     pub fn new(settings: Settings, channel: String) -> Result<Self, Option<AeronError>> {
-        println!("Subscribing Ping at {} on Stream ID {}", channel, settings.stream_id);
+        println!("Instance Publisher at {} on Stream ID {}", channel, settings.stream_id);
 
         let mut context = Context::new();
 

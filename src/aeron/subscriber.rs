@@ -55,7 +55,7 @@ pub struct Subscriber {
 
 impl Subscriber {
     pub fn new(settings: Settings, channel: String) -> Result<Self, Option<AeronError>> {
-        println!("Subscribing Pong at {} on Stream ID {}", channel, settings.stream_id);
+        println!("Instance Subscriber at {} on Stream ID {}", channel, settings.stream_id);
 
         let mut context = Context::new();
 

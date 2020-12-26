@@ -23,7 +23,11 @@ pub struct Settings {
 impl Settings {
     pub fn new(args: Arguments) -> Self {
         Self {
-            dir_prefix: String::new(),
+            dir_prefix: if cfg!(target_os = "windows") {
+                String::from(format!("C:\\Users\\{}\\AppData\\Local\\Temp\\aeron-{}", whoami::username(), whoami::username()))
+            } else  {
+                String::from(format!("/dev/shm/aeron-{}", whoami::username()))
+            },
             port: args.port,
             stream_id: DEFAULT_STREAM_ID.parse().unwrap(),
             number_of_warmup_messages: 0,
