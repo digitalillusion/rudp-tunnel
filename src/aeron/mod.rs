@@ -12,7 +12,6 @@ pub(crate) mod subscriber;
 #[derive(Clone)]
 pub struct Settings {
     dir_prefix: String,
-    port: i32,
     stream_id: i32,
     number_of_warmup_messages: i64,
     number_of_messages: i64,
@@ -21,14 +20,13 @@ pub struct Settings {
 }
 
 impl Settings {
-    pub fn new(args: Arguments) -> Self {
+    pub fn new(_args: Arguments) -> Self {
         Self {
             dir_prefix: if cfg!(target_os = "windows") {
                 String::from(format!("C:\\Users\\{}\\AppData\\Local\\Temp\\aeron-{}", whoami::username(), whoami::username()))
             } else  {
                 String::from(format!("/dev/shm/aeron-{}", whoami::username()))
             },
-            port: args.port,
             stream_id: DEFAULT_STREAM_ID.parse().unwrap(),
             number_of_warmup_messages: 0,
             number_of_messages: 10,

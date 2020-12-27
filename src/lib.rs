@@ -7,12 +7,17 @@ pub enum Mode {
     Server,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct  Arguments {
-    pub port: i32,
-    pub forward: String,
-    pub backward: String,
-    pub tunnel: String,
+    pub origin: String,
+    pub fport: i32,
+    pub bport: i32,
+    pub remote: String,
+    pub sforward: String,
+    pub sbackward: String,
+    pub cforward: String,
+    pub cbackward: String,
+    pub destination: String,
 }
 
 pub fn run(mode: Mode, args: Arguments) {

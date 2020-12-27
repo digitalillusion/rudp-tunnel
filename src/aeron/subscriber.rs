@@ -16,15 +16,16 @@ use aeron_rs::{
 use aeron_rs::concurrent::atomic_buffer::AtomicBuffer;
 use aeron_rs::concurrent::logbuffer::header::Header;
 use aeron_rs::subscription::Subscription;
+use log::{error, info};
 
 use crate::aeron::{Settings, str_to_c};
 
 fn on_new_subscription_handler(channel: CString, stream_id: i32, correlation_id: i64) {
-    println!("Subscription: {} {} {}", channel.to_str().unwrap(), stream_id, correlation_id);
+    info!("Subscription: {} (stream={}, correlation={})", channel.to_str().unwrap(), stream_id, correlation_id);
 }
 
 fn available_image_handler(image: &Image) {
-    println!(
+    info!(
         "Available image correlation_id={} session_id={} at position={} from {}",
         image.correlation_id(),
         image.session_id(),
@@ -34,7 +35,7 @@ fn available_image_handler(image: &Image) {
 }
 
 fn unavailable_image_handler(image: &Image) {
-    println!(
+    info!(
         "Unavailable image correlation_id={} session_id={} at position={} from {}",
         image.correlation_id(),
         image.session_id(),
@@ -44,7 +45,7 @@ fn unavailable_image_handler(image: &Image) {
 }
 
 fn error_handler(error: AeronError) {
-    println!("Error: {:?}", error);
+    error!("Error: {:?}", error);
 }
 
 pub struct Subscriber {
@@ -55,15 +56,13 @@ pub struct Subscriber {
 
 impl Subscriber {
     pub fn new(settings: Settings, channel: String) -> Result<Self, Option<AeronError>> {
-        println!("Instance Subscriber at {} on Stream ID {}", channel, settings.stream_id);
-
         let mut context = Context::new();
 
         if !settings.dir_prefix.is_empty() {
             context.set_aeron_dir(settings.dir_prefix.clone());
         }
 
-        println!("Using CnC file: {}", context.cnc_file_name());
+        info!("Using CnC file: {}", context.cnc_file_name());
 
         context.set_new_subscription_handler(on_new_subscription_handler);
         context.set_available_image_handler(available_image_handler);
@@ -87,11 +86,14 @@ impl Subscriber {
         let subscription = self.create_subscription().expect("Error creating subscription");
         let channel_status = subscription.lock().unwrap().channel_status();
 
-        println!(
-            "Subscription channel status {}: {}",
-            channel_status,
-            channel_status_to_str(channel_status)
-        );
+        if subscription.lock().is_err() {
+            info!(
+                "Subscription channel status {}: {}, {:?}",
+                channel_status,
+                channel_status_to_str(channel_status),
+                subscription.lock().err()
+            );
+        }
 
         subscription
     }
@@ -111,7 +113,7 @@ impl Subscriber {
             std::thread::yield_now();
             subscription = aeron.find_subscription(subscription_id);
         }
-        println!("Created new subscription {}", subscription_id);
+        info!("Created new subscription {}", subscription_id);
         subscription
     }
 }

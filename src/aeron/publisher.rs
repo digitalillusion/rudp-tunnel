@@ -14,16 +14,17 @@ use aeron_rs::{
 };
 use aeron_rs::concurrent::atomic_buffer::{AlignedBuffer, AtomicBuffer};
 use aeron_rs::publication::Publication;
+use log::{error, info};
 
 use crate::aeron::{Settings, str_to_c};
 
 fn error_handler(error: AeronError) {
-    println!("Error: {:?}", error);
+    error!("Error: {:?}", error);
 }
 
 fn on_new_publication_handler(channel: CString, stream_id: i32, session_id: i32, correlation_id: i64) {
-    println!(
-        "Publication: {} {} {} {}",
+    info!(
+        "Publication: {} (stream={} session={} correlation={})",
         channel.to_str().unwrap(),
         stream_id,
         session_id,
@@ -39,15 +40,13 @@ pub struct Publisher {
 
 impl Publisher {
     pub fn new(settings: Settings, channel: String) -> Result<Self, Option<AeronError>> {
-        println!("Instance Publisher at {} on Stream ID {}", channel, settings.stream_id);
-
         let mut context = Context::new();
 
         if !settings.dir_prefix.is_empty() {
             context.set_aeron_dir(settings.dir_prefix.clone());
         }
 
-        println!("Using CnC file: {}", context.cnc_file_name());
+        info!("Using CnC file: {}", context.cnc_file_name());
 
         context.set_new_publication_handler(on_new_publication_handler);
         context.set_error_handler(error_handler);
@@ -69,11 +68,14 @@ impl Publisher {
         let publication = self.create_pubblication().expect("Error creating publication");
         let channel_status = publication.lock().unwrap().channel_status();
 
-        println!(
-            "Publication channel status {}: {} ",
-            channel_status,
-            channel_status_to_str(channel_status)
-        );
+        if publication.lock().is_err() {
+            info!(
+                "Publication channel status {}: {}, {:?}",
+                channel_status,
+                channel_status_to_str(channel_status),
+                publication.lock().err()
+            );
+        }
 
         publication
     }
@@ -86,11 +88,11 @@ impl Publisher {
         let result = publication.lock().unwrap().offer_part(src_buffer, 0, buffer_size);
 
         if let Err(error) = result {
-            println!("Offer with error: {:?}", error);
+            error!("Send error: {:?}", error);
         }
 
         if !publication.lock().unwrap().is_connected() {
-            println!("No active subscribers detected");
+            error!("No active subscribers detected on channel {}", self.channel);
         }
     }
 
@@ -106,7 +108,7 @@ impl Publisher {
             std::thread::yield_now();
             publication = aeron.find_publication(publication_id);
         };
-        println!("Created pubblication {}", publication_id);
+        info!("Created pubblication {}", publication_id);
 
         publication
     }
