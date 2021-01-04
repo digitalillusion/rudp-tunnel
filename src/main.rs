@@ -28,7 +28,7 @@ fn parse_args() -> Option<(Mode, Arguments)> {
     opts.optopt("q", "bport", "The port on which backward channel operates. Defaults to FPORT", "BPORT");
     opts.optopt("o", "origin", "Ip address to bind the client onto, origin of the tunnel. Mutually exclusive with -d ", "ORIGIN");
     opts.optopt("d", "destination", "Ip address where server sends packets, destination of the tunnel. Mutually exclusive with -o", "DESTINATION");
-    opts.optopt("r", "remote", "Public network address of the remote side. Defaults to 0.0.0.0", "REMOTE");
+    opts.optopt("r", "remote", "Public network address of the remote server. Defaults to 0.0.0.0", "REMOTE");
     opts.optopt("i", "interface", "Routing interface. Defaults to 0.0.0.0", "INTERFACE");
     opts.optopt("f", "forward", "Forward channel, client to server.", "FORWARD");
     opts.optopt("b", "backward", "Backward channel, server to client.", "BACKWARD");

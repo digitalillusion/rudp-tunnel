@@ -15,13 +15,13 @@ On both parties the Aeron Media Driver must be running:
 
 Or, if you run the Java version:
 
-    aeron-driver
+    media-driver
 
 Server-side proxy is the first to launch. It doesn't matter if the service which is the destination of the tunnel has not exposed its port yet.
 
-    rudp-tunnel -r REMOTE -d SERVICE_HOST:SERVICE_PORT
+    rudp-tunnel -d SERVICE_HOST:SERVICE_PORT
 
-The above command defines opens a channel toward the remote client and defines a given service as destination of the tunnel.
+The above command defines a given service as destination of the tunnel.
 
 On the client side, the command opens another channel toward the remote server and defines a given service as origin of the tunnel.
 Additionally, it's possible to specify the network interface where to route traffic.
@@ -43,7 +43,7 @@ Additionally, it's possible to specify the network interface where to route traf
         -d, --destination DESTINATION
                             Ip address where server sends packets, destination of
                             the tunnel. Mutually exclusive with -o
-        -r, --remote REMOTE Public network address of the remote side. Defaults to
+        -r, --remote REMOTE Public network address of the remote server. Defaults to
                             0.0.0.0
         -i, --interface INTERFACE
                             Routing interface. Defaults to 0.0.0.0
@@ -88,9 +88,9 @@ Instead, to create a tunnel one would do as follows.
 
 Before starting, make sure that the Aeron driver is running. 
 
-Start the server-side proxy, open a channel with the remote client and listen on the IPX server address (destination)
+Start the server-side proxy, listen on the IPX server address (destination)
 
-    rudp-tunnel -r 97.22.247.211 -d 127.0.0.1:19900
+    rudp-tunnel -d 127.0.0.1:19900
 
 Then, the client-side proxy opens a channel with the remote server on a given routing interface and listens to an IPX connection (origin)  
  
