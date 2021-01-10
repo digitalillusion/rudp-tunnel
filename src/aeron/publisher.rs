@@ -18,11 +18,11 @@ use log::{error, info};
 
 use crate::aeron::{Settings, str_to_c};
 
-fn error_handler(error: AeronError) {
+pub fn error_handler(error: AeronError) {
     error!("Error: {:?}", error);
 }
 
-fn on_new_publication_handler(channel: CString, stream_id: i32, session_id: i32, correlation_id: i64) {
+pub fn on_new_publication_handler(channel: CString, stream_id: i32, session_id: i32, correlation_id: i64) {
     info!(
         "Publication: {} (stream={} session={} correlation={})",
         channel.to_str().unwrap(),
@@ -39,7 +39,8 @@ pub struct Publisher {
 }
 
 impl Publisher {
-    pub fn new(settings: Settings, channel: String) -> Result<Self, Option<AeronError>> {
+
+    pub fn new_context(settings: Settings) -> Context {
         let mut context = Context::new();
 
         if !settings.dir_prefix.is_empty() {
@@ -52,6 +53,10 @@ impl Publisher {
         context.set_error_handler(error_handler);
         context.set_pre_touch_mapped_memory(true);
 
+        context
+    }
+
+    pub fn new(context: Context, settings: Settings, channel: String) -> Result<Self, Option<AeronError>> {
         let aeron = Aeron::new(context);
 
         if aeron.is_err() {

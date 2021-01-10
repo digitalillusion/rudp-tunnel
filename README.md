@@ -17,42 +17,32 @@ Or, if you run the Java version:
 
     media-driver
 
-Server-side proxy is the first to launch. It doesn't matter if the service which is the destination of the tunnel has not exposed its port yet.
+Server-side proxy is the first to launch. It doesn't matter if the service which is the endpoint of the tunnel has not exposed its port yet.
 
-    rudp-tunnel -d SERVICE_HOST:SERVICE_PORT
+    rudp-tunnel -e SERVICE_HOST:SERVICE_PORT
 
-The above command defines a given service as destination of the tunnel.
+The above command defines a given network address as endpoint of the tunnel.
 
-On the client side, the command opens another channel toward the remote server and defines a given service as origin of the tunnel.
+On the client side, the command opens another channel toward the server and defines a given service as endpoint of the tunnel.
 Additionally, it's possible to specify the network interface where to route traffic.
 
-    rudp-tunnel -r REMOTE -i INTERFACE -o SERVICE_HOST:SERVICE_PORT 
+    rudp-tunnel -s SERVER -i INTERFACE -e SERVICE_HOST:SERVICE_PORT 
 
-*The tunnel operates by default on port 40123, it must be forwarded if you are behind a NAT.*
+*The tunnel operates on both sides on port 40123 by default. It must be forwarded if you are behind a NAT.*
+
+At this moment, the origin service is able to communicate with the destination service, and viceversa, through the reliable UDP tunnel.
 
 
 **Options**
 
         -h, --help          Show this usage message.
-        -p, --fport FPORT   The port on which forward channel operates. Defaults
-                            to 40123
-        -q, --bport BPORT   The port on which backward channel operates. Defaults
-                            to FPORT
-        -o, --origin ORIGIN Ip address to bind the client onto, origin of the
-                            tunnel. Mutually exclusive with -d
-        -d, --destination DESTINATION
-                            Ip address where server sends packets, destination of
-                            the tunnel. Mutually exclusive with -o
-        -r, --remote REMOTE Public network address of the remote server. Defaults to
-                            0.0.0.0
+        -p, --port PORT     The port on which tunnel operates. Defaults to 40123
+        -e, --endpoint ENDPOINT
+                            Network address where to send packets, endpoint of the
+                            tunnel.
+        -s, --server SERVER Public Ip address of the server. Defaults to 0.0.0.0
         -i, --interface INTERFACE
                             Routing interface. Defaults to 0.0.0.0
-        -f, --forward FORWARD
-                            Forward channel, client to server.
-        -b, --backward BACKWARD
-                            Backward channel, server to client.
-
-
 
 
 
@@ -90,11 +80,11 @@ Before starting, make sure that the Aeron driver is running.
 
 Start the server-side proxy, listen on the IPX server address (destination)
 
-    rudp-tunnel -d 127.0.0.1:19900
+    rudp-tunnel -e 127.0.0.1:19900
 
 Then, the client-side proxy opens a channel with the remote server on a given routing interface and listens to an IPX connection (origin)  
  
-    rudp-tunnel -r 65.53.156.219 -i 192.168.1.208/8 -o 127.0.0.1:19901
+    rudp-tunnel -s 65.53.156.219 -i 192.168.1.208/8 -e 127.0.0.1:19901
  
 Afterwards, IPXNET binds a server on the server side, inside DOSBox:
 

@@ -20,11 +20,11 @@ use log::{error, info};
 
 use crate::aeron::{Settings, str_to_c};
 
-fn on_new_subscription_handler(channel: CString, stream_id: i32, correlation_id: i64) {
+pub fn on_new_subscription_handler(channel: CString, stream_id: i32, correlation_id: i64) {
     info!("Subscription: {} (stream={}, correlation={})", channel.to_str().unwrap(), stream_id, correlation_id);
 }
 
-fn available_image_handler(image: &Image) {
+pub fn available_image_handler(image: &Image) {
     info!(
         "Available image correlation_id={} session_id={} at position={} from {}",
         image.correlation_id(),
@@ -34,7 +34,7 @@ fn available_image_handler(image: &Image) {
     );
 }
 
-fn unavailable_image_handler(image: &Image) {
+pub fn unavailable_image_handler(image: &Image) {
     info!(
         "Unavailable image correlation_id={} session_id={} at position={} from {}",
         image.correlation_id(),
@@ -44,7 +44,7 @@ fn unavailable_image_handler(image: &Image) {
     );
 }
 
-fn error_handler(error: AeronError) {
+pub fn error_handler(error: AeronError) {
     error!("Error: {:?}", error);
 }
 
@@ -55,7 +55,8 @@ pub struct Subscriber {
 }
 
 impl Subscriber {
-    pub fn new(settings: Settings, channel: String) -> Result<Self, Option<AeronError>> {
+
+    pub fn new_context(settings: Settings) -> Context {
         let mut context = Context::new();
 
         if !settings.dir_prefix.is_empty() {
@@ -70,6 +71,10 @@ impl Subscriber {
         context.set_error_handler(error_handler);
         context.set_pre_touch_mapped_memory(true);
 
+        context
+    }
+
+    pub fn new(context: Context, settings: Settings, channel: String) -> Result<Self, Option<AeronError>> {
         let aeron = Aeron::new(context);
 
         if aeron.is_err() {

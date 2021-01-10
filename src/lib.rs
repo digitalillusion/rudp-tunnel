@@ -2,27 +2,30 @@ mod aeron;
 mod client;
 mod server;
 
+use crate::client::Client;
+use crate::server::Server;
+
+#[macro_use]
+extern crate lazy_static;
+
 pub enum Mode {
     Client,
     Server,
 }
 
 #[derive(Clone, Debug)]
-pub struct  Arguments {
-    pub origin: String,
-    pub fport: i32,
-    pub bport: i32,
-    pub remote: String,
+pub struct Arguments {
+    pub port: i32,
+    pub server: String,
     pub sforward: String,
-    pub sbackward: String,
     pub cforward: String,
     pub cbackward: String,
-    pub destination: String,
+    pub endpoint: String,
 }
 
 pub fn run(mode: Mode, args: Arguments) {
     match mode {
-        Mode::Client => client::instance(args),
-        Mode::Server => server::instance(args),
+        Mode::Client => Client::instance(args).start(),
+        Mode::Server => Server::instance(args).start(),
     }
 }
