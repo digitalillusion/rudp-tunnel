@@ -5,13 +5,14 @@ use log::info;
 
 use rudp_tunnel::{Arguments, Mode, run};
 
-fn main() {
+fn main() -> std::io::Result<()> {
     env_logger::init_from_env(
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, "info"));
 
     if let Some((mode, args)) = parse_args() {
-        run(mode, args);
+        run(mode, args)?
     }
+    Ok(())
 }
 
 fn print_usage(program: &str, opts: Options) {
@@ -28,6 +29,7 @@ fn parse_args() -> Option<(Mode, Arguments)> {
     opts.optopt("e", "endpoint", "Network address where to send packets, endpoint of the tunnel.", "ENDPOINT");
     opts.optopt("s", "server", "Public Ip address of the server. Defaults to 0.0.0.0", "SERVER");
     opts.optopt("i", "interface", "Routing interface. Defaults to 0.0.0.0", "INTERFACE");
+    opts.optflag("d", "driverless", "Run without starting Aeron driver, assuming that it has been started externally.");
 
     match opts.parse(&args[1..]) {
         Ok(matches)  => {
@@ -43,6 +45,7 @@ fn parse_args() -> Option<(Mode, Arguments)> {
                 cforward: String::from(format!("endpoint={}:{}{}", server, port, interface)),
                 cbackward: String::from(format!("endpoint=0.0.0.0:{}{}", port, interface)),
                 endpoint: matches.opt_str("endpoint").unwrap_or(String::from(format!("0.0.0.0:0"))),
+                driverless: matches.opt_present("driverless")
             };
             info!("{:?}", arguments);
              if is_server {
