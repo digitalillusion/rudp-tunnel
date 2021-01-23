@@ -5,6 +5,7 @@ use aeron_rs::{
 };
 
 use crate::Arguments;
+use platform_dirs::AppDirs;
 
 pub(crate) mod publisher;
 pub(crate) mod subscriber;
@@ -23,7 +24,8 @@ impl Settings {
     pub fn new(_args: Arguments) -> Self {
         Self {
             dir_prefix: if cfg!(target_os = "windows") {
-                String::from(format!("C:\\Users\\{}\\AppData\\Local\\Temp\\aeron-{}", whoami::username(), whoami::username()))
+                let app_dirs = AppDirs::new(None, false).unwrap();
+                String::from(format!("{}\\Temp\\aeron-{}\\", app_dirs.data_dir.to_str().unwrap() , whoami::username()))
             } else  {
                 String::from(format!("/dev/shm/aeron-{}", whoami::username()))
             },

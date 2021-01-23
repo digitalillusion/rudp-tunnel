@@ -19,6 +19,7 @@ use std::rc::Rc;
 use regex::Regex;
 use std::str::FromStr;
 use aeron_rs::image::Image;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 lazy_static! {
     static ref NEW_CLIENT_IP_ADDRESSES: Mutex<Vec<String>> = Mutex::new(vec!());
@@ -46,7 +47,7 @@ impl Server {
         }
     }
 
-    pub fn start(self) {
+    pub fn start(self, running: Arc<AtomicBool>) {
         let endpoint = self.endpoint.to_owned();
         let socket:UdpSocket = UdpSocket::bind("0.0.0.0:0").unwrap();
         socket.connect(endpoint.to_owned()).unwrap();
@@ -71,7 +72,7 @@ impl Server {
 
         info!("Server up and running, endpoint {}", self.endpoint);
 
-        loop {
+        while running.load(Ordering::SeqCst) {
             let mut recv_buff = [0; 256];
             if let Ok((n, addr)) = socket.recv_from(&mut recv_buff) {
                 debug!("{} bytes received from {:?}", n, addr);

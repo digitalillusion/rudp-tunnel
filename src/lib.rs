@@ -9,9 +9,16 @@ use log::info;
 use std::env::temp_dir;
 use std::fs::File;
 use std::io::Write;
+use std::sync::atomic::{Ordering, AtomicBool};
+use std::sync::Arc;
+use std::time::Duration;
 
 #[macro_use]
 extern crate lazy_static;
+
+lazy_static! {
+    static ref RUNNING: Arc<AtomicBool> = Arc::new(AtomicBool::new(true));
+}
 
 pub enum Mode {
     Client,
@@ -29,10 +36,11 @@ pub struct Arguments {
     pub driverless: bool,
 }
 
-pub fn run(mode: Mode, args: Arguments) -> std::io::Result<()> {
+pub fn run(mode: Mode, args: Arguments) {
+    let running = RUNNING.clone();
     if args.driverless {
         info!("Skipping driver launch...");
-        start_instance(mode, args);
+        start_instance(running, mode, args);
     } else {
         info!("Launching Aeron driver...");
         let driver_path = extract_driver();
@@ -56,18 +64,23 @@ pub fn run(mode: Mode, args: Arguments) -> std::io::Result<()> {
                 .expect("Error spawning Aeron driver process")
         };
 
-        start_instance(mode, args);
+        let transitory_duration = Duration::from_millis(1000);
+        std::thread::sleep(transitory_duration);
 
-        child.kill()?
+        start_instance(RUNNING.clone(), mode, args);
+
+        ctrlc::set_handler(move || {
+            running.store(false, Ordering::SeqCst);
+            child.kill().unwrap();
+        }).unwrap();
+
     }
-
-    Ok(())
 }
 
-fn start_instance(mode: Mode, args: Arguments) {
+fn start_instance(running: Arc<AtomicBool>, mode: Mode, args: Arguments) {
     match mode {
-        Mode::Client => Client::instance(args).start(),
-        Mode::Server => Server::instance(args).start(),
+        Mode::Client => Client::instance(args).start(running),
+        Mode::Server => Server::instance(args).start(running),
     }
 }
 

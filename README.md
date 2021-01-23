@@ -1,8 +1,8 @@
 rudp-tunnel
 ===========
 
-An utility to upgrade an UDP connection to reliable UDP by mean of a tunnel relying on the [Aeron](https://github.com/real-logic/aeron) driver.
-The command acts as a proxy between the origin and the destination of the initial, non-reliable UDP connection.
+An utility to upgrade an UDP stream to reliable UDP by mean of a tunnel relying on the [Aeron](https://github.com/real-logic/aeron) driver.
+The command acts as a proxy between the origin and the destination of the initial, non-reliable UDP stream.
 It listens on a port on the client side and sends to a given network address on the server side.
 The tunnel also works backward, whether the server broadcasts to the connected clients.
 

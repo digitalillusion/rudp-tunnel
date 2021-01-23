@@ -10,7 +10,7 @@ fn main() -> std::io::Result<()> {
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, "info"));
 
     if let Some((mode, args)) = parse_args() {
-        run(mode, args)?
+        run(mode, args)
     }
     Ok(())
 }
@@ -48,7 +48,10 @@ fn parse_args() -> Option<(Mode, Arguments)> {
                 driverless: matches.opt_present("driverless")
             };
             info!("{:?}", arguments);
-             if is_server {
+            if matches.opt_present("help") {
+                print_usage(&program, opts);
+                None
+            } else if is_server {
                 Some((Mode::Server, arguments))
             } else {
                 Some((Mode::Client, arguments))

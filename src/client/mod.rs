@@ -13,6 +13,9 @@ use crate::Arguments;
 use crate::aeron::publisher::Publisher;
 use crate::aeron::subscriber::Subscriber;
 
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
+
 pub struct Client {
     settings: Settings,
     channel_forward: String,
@@ -30,7 +33,7 @@ impl Client {
         }
     }
 
-    pub fn start (self) {
+    pub fn start (self, running: Arc<AtomicBool>) {
         let origin_addr = RefCell::new(None);
         let socket_in = UdpSocket::bind(self.endpoint.to_owned()).expect("Error binding input socket");
         socket_in.set_nonblocking(true).expect("Failed to enter non-blocking mode for input socket");
@@ -55,9 +58,10 @@ impl Client {
         let subscriber_context = Subscriber::new_context(self.settings.clone());
         let subscriber = Subscriber::new(subscriber_context, self.settings.clone(), self.channel_backward).expect("Error creating subscriber");
         let subscription = subscriber.listen();
+
         info!("Client listening to endpoint {} ", self.endpoint);
 
-        loop {
+        while running.load(Ordering::SeqCst) {
             let mut recv_buff = [0; 256];
             if let Ok((n, addr)) = socket_in.recv_from(&mut recv_buff) {
                 debug!("{} bytes received from {:?}", n, addr);
