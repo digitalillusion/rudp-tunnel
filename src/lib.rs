@@ -1,20 +1,22 @@
-mod aeron;
-mod client;
-mod server;
+#[macro_use]
+extern crate lazy_static;
 
-use crate::client::Client;
-use crate::server::Server;
-use std::process::Command;
-use log::info;
 use std::env::temp_dir;
 use std::fs::File;
 use std::io::Write;
-use std::sync::atomic::{Ordering, AtomicBool};
+use std::process::Command;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
-#[macro_use]
-extern crate lazy_static;
+use log::info;
+
+use crate::client::Client;
+use crate::server::Server;
+
+mod aeron;
+mod client;
+mod server;
 
 lazy_static! {
     static ref RUNNING: Arc<AtomicBool> = Arc::new(AtomicBool::new(true));
@@ -30,6 +32,7 @@ pub struct Arguments {
     pub port: i32,
     pub server: String,
     pub sforward: String,
+    pub sbackward: String,
     pub cforward: String,
     pub cbackward: String,
     pub endpoint: String,

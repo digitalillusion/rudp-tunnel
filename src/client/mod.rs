@@ -1,20 +1,19 @@
 use std::cell::RefCell;
 use std::net::UdpSocket;
 use std::slice;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
 use aeron_rs::concurrent::atomic_buffer::AtomicBuffer;
 use aeron_rs::concurrent::logbuffer::header::Header;
 use aeron_rs::utils::types::Index;
-use log::{debug, info, error};
+use log::{debug, error, info};
 
-use crate::aeron::Settings;
-use crate::Arguments;
 use crate::aeron::publisher::Publisher;
+use crate::aeron::Settings;
 use crate::aeron::subscriber::Subscriber;
-
-use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
+use crate::Arguments;
 
 pub struct Client {
     settings: Settings,
@@ -52,12 +51,15 @@ impl Client {
             }
         };
 
-        let publisher_context = Publisher::new_context(self.settings.clone());
-        let publisher = Publisher::new(publisher_context, self.settings.clone(), self.channel_forward).expect("Error creating publisher");
-        let publication = publisher.publish();
         let subscriber_context = Subscriber::new_context(self.settings.clone());
-        let subscriber = Subscriber::new(subscriber_context, self.settings.clone(), self.channel_backward).expect("Error creating subscriber");
+        let subscriber = Subscriber::new(subscriber_context, self.settings.clone(), self.channel_backward)
+            .expect("Error creating subscriber");
         let subscription = subscriber.listen();
+
+        let publisher_context = Publisher::new_context(self.settings.clone());
+        let publisher = Publisher::new(publisher_context, self.settings.clone(), self.channel_forward)
+            .expect("Error creating publisher");
+        let publication = publisher.publish();
 
         info!("Client listening to endpoint {} ", self.endpoint);
 

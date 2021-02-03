@@ -3,9 +3,9 @@ use std::ffi::CString;
 use aeron_rs::{
     example_config::{DEFAULT_MESSAGE_LENGTH, DEFAULT_STREAM_ID},
 };
+use platform_dirs::AppDirs;
 
 use crate::Arguments;
-use platform_dirs::AppDirs;
 
 pub(crate) mod publisher;
 pub(crate) mod subscriber;

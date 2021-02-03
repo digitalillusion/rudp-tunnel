@@ -9,18 +9,27 @@ The tunnel also works backward, whether the server broadcasts to the connected c
 Usage
 -----
 
+**Embedded driver**
+
+The executable embeds the Java version of the Aeron driver. In order to work correctly, JAVA_HOME environment variable must be defined.
+
+**Startup**
+
 Server-side proxy is the first to launch. It doesn't matter if the service which is the endpoint of the tunnel has not exposed its port yet.
 
-    rudp-tunnel -e SERVICE_HOST:SERVICE_PORT
+    rudp-tunnel -u SERVER -e SERVICE_HOST:SERVICE_PORT
 
-The above command defines a given network address as endpoint of the tunnel.
+The above command accept as parameter the public address of the server and defines a network address of a service 
+as endpoint of the tunnel.
 
-On the client side, the command opens another channel toward the server and defines a given service as the other endpoint of the tunnel.
+*The tunnel operates by default on port 40123 and uses control port 32104 for [client NAT traversal through multi-destination-cast](http://www.io7m.com/documents/aeron-guide/#weak_nat).
+Both these ports must be opened/forwarded on the firewall/router behind which the server runs.*
+
+On the client side, the command opens a channel toward the server and defines a network address of a service 
+as the other endpoint of the tunnel.
 Additionally, it's possible to specify the network interface where to route traffic.
 
     rudp-tunnel -s SERVER -i INTERFACE -e SERVICE_HOST:SERVICE_PORT 
-
-*The tunnel operates on both sides on port 40123 by default. This port must be forwarded if you are behind a NAT.*
 
 At this moment, the services at the two endpoints are able to communicate with each other through the reliable UDP tunnel.
 
@@ -29,14 +38,20 @@ At this moment, the services at the two endpoints are able to communicate with e
 
         -h, --help          Show this usage message.
         -p, --port PORT     The port on which tunnel operates. Defaults to 40123
+        -c, --control CONTROL
+                            The control port used for client NAT traversal.
+                            Defaults to 32104
         -e, --endpoint ENDPOINT
-                            Network address where to send packets, endpoint of the
-                            tunnel.
-        -s, --server SERVER Public ip address of the server. Defaults to 0.0.0.0
+                            Network address where packets are sent/received,
+                            endpoint of the tunnel.
+        -s, --server SERVER Public ip address of the server, implicitly defining
+                            this node as a client. Defaults to 0.0.0.0
+        -u, --public PUBLIC Public ip address of this node, starting as server.
+                            Ignored if SERVER is specified. Defaults to 0.0.0.0
         -i, --interface INTERFACE
-                            Routing interface. Defaults to 0.0.0.0
+                            Routing interface.
         -d, --driverless    Run without starting Aeron driver, assuming that it
-                            has been started already.
+                            has been started externally.
 
 
 Building
@@ -66,18 +81,20 @@ However, since the ethernet has a lower error rate than the UDP protocol on the 
 some games may not behave correctly in the presence, for instance, of packet loss.
 
 `rudp-tunnel` can be used to provide a reliable connection for DOSBox IPXNET, allowing stable gameplay.
-Typically, IPXNET binds a server on a given network address and the IPXNET clients can connect to such address.
+Typically, IPXNET server binds a port on a given ip address (65.53.156.219 in the example) and 
+the IPXNET clients can connect to such address.
 Instead, to create a tunnel one would do as follows.
 
-Start the server-side proxy, listen on the IPX server address (first endpoint)
+Start the server-side proxy, listen to the IPX server on localhost (first endpoint)
 
-    rudp-tunnel -e 127.0.0.1:19900
+    rudp-tunnel -u 65.53.156.219 -e 127.0.0.1:19900
 
-Then, the client-side proxy connects to the server on a given routing interface and listens to an IPX connection (second endpoint)  
+Then, the client-side proxy connects to the server on a given routing interface (if there is the need to route through one of several available network interfaces) 
+and listens to an IPX connection coming from localhost (second endpoint)  
  
-    rudp-tunnel -s 65.53.156.219 -i 192.168.1.208/8 -e 127.0.0.1:19901
+    rudp-tunnel -s 65.53.156.219 -i 192.168.1.0/24 -e 127.0.0.1:19901
  
-Afterwards, IPXNET binds to the first endpoint. Inside DOSBox, execute:
+Afterwards, IPXNET server starts on the first endpoint. Inside DOSBox, execute:
 
     ipxnet startserver 19900
 
