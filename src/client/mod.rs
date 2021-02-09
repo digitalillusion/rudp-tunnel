@@ -40,14 +40,17 @@ impl Client {
         socket_out.set_nonblocking(true).expect("Failed to enter non-blocking mode for output socket");
 
         let on_new_fragment = |buffer: &AtomicBuffer, offset: Index, length: Index, header: &Header| {
-            let origin_addr = origin_addr.borrow().expect("Origin address is not specified but endpoint is sending packages.");
-            debug!("{} bytes received on stream {} from session {} toward {}", length, header.stream_id(), header.session_id(), origin_addr);
-            unsafe {
-                let slice_msg = slice::from_raw_parts_mut(buffer.buffer().offset(offset as isize), length as usize);
-                socket_out.send_to(slice_msg, origin_addr).unwrap_or_else(|e| {
-                    error!("Can't tunnel packets to server: {}", e);
-                    0
-                });
+            if let Some(origin_addr) = *origin_addr.borrow() {
+                debug!("{} bytes received on stream {} from session {} toward {}", length, header.stream_id(), header.session_id(), origin_addr);
+                unsafe {
+                    let slice_msg = slice::from_raw_parts_mut(buffer.buffer().offset(offset as isize), length as usize);
+                    socket_out.send_to(slice_msg, origin_addr).unwrap_or_else(|e| {
+                        error!("Can't tunnel packets to server: {}", e);
+                        0
+                    });
+                }
+            } else {
+                debug!("Origin address is not specified but the endpoint is sending packages.");
             }
         };
 

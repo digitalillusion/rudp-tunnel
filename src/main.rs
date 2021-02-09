@@ -46,7 +46,7 @@ fn parse_args() -> Option<(Mode, Arguments)> {
             let arguments = Arguments {
                 port: port.to_owned(),
                 server: server.to_owned(),
-                sforward: String::from(format!("endpoint={}:{}{}", public, port, interface)),
+                sforward: String::from(format!("endpoint=0.0.0.0:{}{}", port, interface)),
                 sbackward: String::from(format!("endpoint={}:{}{}|control={}:{}|control-mode=dynamic", public, port, interface, public, control)),
                 cforward: String::from(format!("endpoint={}:{}{}", server, port, interface)),
                 cbackward: String::from(format!("endpoint=0.0.0.0:{}{}|control={}:{}|control-mode=dynamic", port, interface, server, control)),

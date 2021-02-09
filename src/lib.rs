@@ -45,13 +45,13 @@ pub fn run(mode: Mode, args: Arguments) {
         info!("Skipping driver launch...");
         start_instance(running, mode, args);
     } else {
-        info!("Launching Aeron driver...");
         let driver_path = extract_driver();
 
         let mut child = if cfg!(target_os = "windows") {
-            let mut command = String::from("%JAVA_HOME%\\bin\\java -cp ");
+            let mut command = String::from("java -cp ");
             command.push_str(driver_path.as_str());
-            command.push_str("%JVM_OPTS% io.aeron.driver.MediaDriver %*");
+            command.push_str(" io.aeron.driver.MediaDriver %*");
+            info!("Launching Aeron driver: {}", command.to_owned());
             Command::new("cmd")
                 .args(&["/C", command.as_str()])
                 .spawn()
@@ -59,7 +59,8 @@ pub fn run(mode: Mode, args: Arguments) {
         } else {
             let mut command = String::from("${JAVA_HOME}/bin/java -cp ");
             command.push_str(driver_path.as_str());
-            command.push_str("${JVM_OPTS} io.aeron.driver.MediaDriver \"$@\"");
+            command.push_str(" io.aeron.driver.MediaDriver \"$@\"");
+            info!("Launching Aeron driver: {}", command.to_owned());
             Command::new("sh")
                 .arg("-c")
                 .arg(command.as_str())
