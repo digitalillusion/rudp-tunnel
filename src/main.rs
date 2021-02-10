@@ -7,7 +7,7 @@ use rudp_tunnel::{Arguments, Mode, run};
 
 fn main() -> std::io::Result<()> {
     env_logger::init_from_env(
-        env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, "info")
+        env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, "debug")
     );
 
     if let Some((mode, args)) = parse_args() {
@@ -49,7 +49,7 @@ fn parse_args() -> Option<(Mode, Arguments)> {
                 sforward: String::from(format!("endpoint=0.0.0.0:{}{}", port, interface)),
                 sbackward: String::from(format!("endpoint={}:{}{}|control={}:{}|control-mode=dynamic", public, port, interface, public, control)),
                 cforward: String::from(format!("endpoint={}:{}{}", server, port, interface)),
-                cbackward: String::from(format!("endpoint=0.0.0.0:{}{}|control={}:{}|control-mode=dynamic", port, interface, server, control)),
+                cbackward: String::from(format!("endpoint={}:{}{}|control={}:{}|control-mode=dynamic", public, port, interface, server, control)),
                 endpoint: matches.opt_str("endpoint").unwrap_or(String::from(format!("0.0.0.0:0"))),
                 driverless: matches.opt_present("driverless")
             };

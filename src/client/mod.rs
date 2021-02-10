@@ -67,11 +67,11 @@ impl Client {
         info!("Client listening to endpoint {} ", self.endpoint);
 
         while running.load(Ordering::SeqCst) {
-            let mut recv_buff = [0; 256];
+            let mut recv_buff = vec![0; self.settings.message_length as usize];
             if let Ok((n, addr)) = socket_in.recv_from(&mut recv_buff) {
                 debug!("{} bytes received from {:?}", n, addr);
                 origin_addr.borrow_mut().replace(addr);
-                publisher.send(publication.to_owned(), recv_buff, n as i32);
+                publisher.send(publication.to_owned(), &recv_buff, n as i32);
             }
 
             subscriber.recv(subscription.to_owned(), &on_new_fragment);

@@ -16,7 +16,7 @@ pub struct Settings {
     stream_id: i32,
     number_of_warmup_messages: i64,
     number_of_messages: i64,
-    message_length: i32,
+    pub message_length: i32,
     linger_timeout_ms: u64,
 }
 

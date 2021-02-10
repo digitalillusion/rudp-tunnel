@@ -85,10 +85,10 @@ impl Publisher {
         publication
     }
 
-    pub fn send(self: &Self, publication: Arc<Mutex<Publication>>, buffer: [u8; 256], buffer_size: i32) {
-        let aligned_buffer = AlignedBuffer::with_capacity(256);
+    pub fn send(self: &Self, publication: Arc<Mutex<Publication>>, buffer: &[u8], buffer_size: i32) {
+        let aligned_buffer = AlignedBuffer::with_capacity(self.settings.message_length);
         let src_buffer = AtomicBuffer::from_aligned(&aligned_buffer);
-        src_buffer.put_bytes(0, &buffer);
+        src_buffer.put_bytes(0, buffer);
 
         let result = publication.lock().unwrap().offer_part(src_buffer, 0, buffer_size);
 
