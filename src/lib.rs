@@ -37,6 +37,7 @@ pub struct Arguments {
     pub cbackward: String,
     pub endpoint: String,
     pub driverless: bool,
+    pub mtu: i32,
 }
 
 pub fn run(mode: Mode, args: Arguments) {
@@ -47,20 +48,16 @@ pub fn run(mode: Mode, args: Arguments) {
     } else {
         let driver_path = extract_driver();
 
+        let mut command = String::from("java -cp ");
+        command.push_str(driver_path.as_str());
+        command.push_str(" io.aeron.driver.MediaDriver");
+        info!("Launching Aeron driver: {}", command.to_owned());
         let mut child = if cfg!(target_os = "windows") {
-            let mut command = String::from("java -cp ");
-            command.push_str(driver_path.as_str());
-            command.push_str(" io.aeron.driver.MediaDriver %*");
-            info!("Launching Aeron driver: {}", command.to_owned());
             Command::new("cmd")
                 .args(&["/C", command.as_str()])
                 .spawn()
                 .expect("Error spawning Aeron driver process")
         } else {
-            let mut command = String::from("${JAVA_HOME}/bin/java -cp ");
-            command.push_str(driver_path.as_str());
-            command.push_str(" io.aeron.driver.MediaDriver \"$@\"");
-            info!("Launching Aeron driver: {}", command.to_owned());
             Command::new("sh")
                 .arg("-c")
                 .arg(command.as_str())

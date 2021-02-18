@@ -11,7 +11,7 @@ Usage
 
 **Embedded driver**
 
-The executable embeds the Java version of the Aeron driver. In order to work correctly, JAVA_HOME environment variable must be defined.
+The executable embeds the Java version of the Aeron driver. In order to work correctly, `java` must be available in the path.
 
 **Startup**
 
@@ -52,6 +52,8 @@ At this moment, the services at the two endpoints are able to communicate with e
                             Routing interface.
         -d, --driverless    Run without starting Aeron driver, assuming that it
                             has been started externally.
+        -m, --mtu MTU       Packets Maximum Transmission Unit. Defaults to 128
+                            (bytes)
 
 
 Building
@@ -77,7 +79,7 @@ Example
 
 IPX is a network layer protocol used by DOS games to play on LAN.
 Emulators like DOSBox provide an implementation over UDP of such protocol called [IPXNET](https://www.dosbox.com/wiki/Connectivity#IPX_emulation). 
-However, since the ethernet has a lower error rate than the UDP protocol on the internet, 
+However, since IPX on ethernet has a lower error rate than UDP on the internet, 
 some games may not behave correctly in the presence, for instance, of packet loss.
 
 `rudp-tunnel` can be used to provide a reliable connection for DOSBox IPXNET, allowing stable gameplay.

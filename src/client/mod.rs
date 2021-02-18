@@ -1,6 +1,5 @@
-use std::cell::RefCell;
-use std::net::UdpSocket;
-use std::slice;
+use std::net::{UdpSocket};
+use std::{slice, io};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
@@ -33,24 +32,20 @@ impl Client {
     }
 
     pub fn start (self, running: Arc<AtomicBool>) {
-        let origin_addr = RefCell::new(None);
-        let socket_in = UdpSocket::bind(self.endpoint.to_owned()).expect("Error binding input socket");
-        socket_in.set_nonblocking(true).expect("Failed to enter non-blocking mode for input socket");
-        let socket_out = UdpSocket::bind("0.0.0.0:0").expect("Error binding output socket");
-        socket_out.set_nonblocking(true).expect("Failed to enter non-blocking mode for output socket");
-
+        let socket = UdpSocket::bind(self.endpoint.to_owned()).expect("Error binding socket input");
+        socket.set_read_timeout(None).expect("Failed to set read timeout");
+        socket.set_nonblocking(true).expect("Failed to enter non-blocking mode");
         let on_new_fragment = |buffer: &AtomicBuffer, offset: Index, length: Index, header: &Header| {
-            if let Some(origin_addr) = *origin_addr.borrow() {
-                debug!("{} bytes received on stream {} from session {} toward {}", length, header.stream_id(), header.session_id(), origin_addr);
+            let peer_addr = socket.peer_addr();
+            if peer_addr.is_ok() {
+                debug!("Sending {} bytes received on stream {} from session {} to endpoint {:?}", length, header.stream_id(), header.session_id(), peer_addr.unwrap());
                 unsafe {
                     let slice_msg = slice::from_raw_parts_mut(buffer.buffer().offset(offset as isize), length as usize);
-                    socket_out.send_to(slice_msg, origin_addr).unwrap_or_else(|e| {
+                    socket.send(slice_msg).unwrap_or_else(|e| {
                         error!("Can't tunnel packets to server: {}", e);
                         0
                     });
                 }
-            } else {
-                debug!("Origin address is not specified but the endpoint is sending packages.");
             }
         };
 
@@ -63,15 +58,24 @@ impl Client {
         let publisher = Publisher::new(publisher_context, self.settings.clone(), self.channel_forward)
             .expect("Error creating publisher");
         let publication = publisher.publish();
+        let stream_id = publication.lock().unwrap().stream_id();
+        let session_id = publication.lock().unwrap().session_id();
 
         info!("Client listening to endpoint {} ", self.endpoint);
 
         while running.load(Ordering::SeqCst) {
             let mut recv_buff = vec![0; self.settings.message_length as usize];
-            if let Ok((n, addr)) = socket_in.recv_from(&mut recv_buff) {
-                debug!("{} bytes received from {:?}", n, addr);
-                origin_addr.borrow_mut().replace(addr);
-                publisher.send(publication.to_owned(), &recv_buff, n as i32);
+            match socket.recv_from(&mut recv_buff) {
+                Ok((n, addr)) => {
+                    debug!("Publishing on stream {} from session {} {} bytes received from endpoint {:?}", stream_id, session_id, n, addr);
+                    socket.connect(addr).expect("Error connecting socket output");
+                    publisher.send(publication.to_owned(), &recv_buff, n as i32);
+                }
+                Err(err) => {
+                    if err.kind() != io::ErrorKind::WouldBlock {
+                        error!("Error receiving from endpoint {:?}", err)
+                    }
+                }
             }
 
             subscriber.recv(subscription.to_owned(), &on_new_fragment);

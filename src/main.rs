@@ -33,6 +33,7 @@ fn parse_args() -> Option<(Mode, Arguments)> {
     opts.optopt("u", "public", "Public ip address of this node, starting as server. Ignored if SERVER is specified. Defaults to 0.0.0.0", "PUBLIC");
     opts.optopt("i", "interface", "Routing interface.", "INTERFACE");
     opts.optflag("d", "driverless", "Run without starting Aeron driver, assuming that it has been started externally.");
+    opts.optopt("m", "mtu", "Packets Maximum Transmission Unit. Defaults to 128 (bytes)", "MTU");
 
     match opts.parse(&args[1..]) {
         Ok(matches)  => {
@@ -43,15 +44,17 @@ fn parse_args() -> Option<(Mode, Arguments)> {
             let public = matches.opt_str("public").unwrap_or(String::from("0.0.0.0"));
             let interface = matches.opt_str("interface");
             let interface= interface.map(|i| { format!("|interface={}", i) }).unwrap_or(String::new());
+            let mtu = matches.opt_str("mtu").unwrap_or(String::from("128")).parse().expect("Cannot parse mtu");
             let arguments = Arguments {
                 port: port.to_owned(),
                 server: server.to_owned(),
                 sforward: String::from(format!("endpoint=0.0.0.0:{}{}", port, interface)),
                 sbackward: String::from(format!("endpoint={}:{}{}|control={}:{}|control-mode=dynamic", public, port, interface, public, control)),
                 cforward: String::from(format!("endpoint={}:{}{}", server, port, interface)),
-                cbackward: String::from(format!("endpoint={}:{}{}|control={}:{}|control-mode=dynamic", public, port, interface, server, control)),
+                cbackward: String::from(format!("endpoint=0.0.0.0:0{}|control={}:{}|control-mode=dynamic", interface, server, control)),
                 endpoint: matches.opt_str("endpoint").unwrap_or(String::from(format!("0.0.0.0:0"))),
-                driverless: matches.opt_present("driverless")
+                driverless: matches.opt_present("driverless"),
+                mtu
             };
             info!("{:?}", arguments);
             if matches.opt_present("help") {

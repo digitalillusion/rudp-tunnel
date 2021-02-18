@@ -1,7 +1,7 @@
 use std::ffi::CString;
 
 use aeron_rs::{
-    example_config::{DEFAULT_MESSAGE_LENGTH, DEFAULT_STREAM_ID},
+    example_config::{DEFAULT_STREAM_ID},
 };
 use platform_dirs::AppDirs;
 
@@ -21,7 +21,7 @@ pub struct Settings {
 }
 
 impl Settings {
-    pub fn new(_args: Arguments) -> Self {
+    pub fn new(args: Arguments) -> Self {
         Self {
             dir_prefix: if cfg!(target_os = "windows") {
                 let app_dirs = AppDirs::new(None, false).unwrap();
@@ -32,7 +32,7 @@ impl Settings {
             stream_id: DEFAULT_STREAM_ID.parse().unwrap(),
             number_of_warmup_messages: 0,
             number_of_messages: 10,
-            message_length: DEFAULT_MESSAGE_LENGTH.parse().unwrap(),
+            message_length: args.mtu,
             linger_timeout_ms: 100,
         }
     }
