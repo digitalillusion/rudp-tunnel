@@ -16,16 +16,17 @@ use aeron_rs::{
 use aeron_rs::concurrent::atomic_buffer::AtomicBuffer;
 use aeron_rs::concurrent::logbuffer::header::Header;
 use aeron_rs::subscription::Subscription;
-use log::{error, info};
+use log::{error, info, debug};
 
 use crate::aeron::{Settings, str_to_c};
+use aeron_rs::utils::types::Index;
 
 pub fn on_new_subscription_handler(channel: CString, stream_id: i32, correlation_id: i64) {
-    info!("Subscription: {} (stream={}, correlation={})", channel.to_str().unwrap(), stream_id, correlation_id);
+    debug!("Subscription: {} (stream={}, correlation={})", channel.to_str().unwrap(), stream_id, correlation_id);
 }
 
 pub fn available_image_handler(image: &Image) {
-    info!(
+    debug!(
         "Available image correlation_id={} session_id={} at position={} from {}",
         image.correlation_id(),
         image.session_id(),
@@ -35,7 +36,7 @@ pub fn available_image_handler(image: &Image) {
 }
 
 pub fn unavailable_image_handler(image: &Image) {
-    info!(
+    debug!(
         "Unavailable image correlation_id={} session_id={} at position={} from {}",
         image.correlation_id(),
         image.session_id(),
@@ -56,14 +57,14 @@ pub struct Subscriber {
 
 impl Subscriber {
 
-    pub fn new_context(settings: Settings) -> Context {
+    pub fn new_context(settings: &Settings) -> Context {
         let mut context = Context::new();
 
         if !settings.dir_prefix.is_empty() {
             context.set_aeron_dir(settings.dir_prefix.clone());
         }
 
-        info!("Using CnC file: {}", context.cnc_file_name());
+        debug!("Using CnC file: {}", context.cnc_file_name());
 
         context.set_new_subscription_handler(on_new_subscription_handler);
         context.set_available_image_handler(available_image_handler);
@@ -74,7 +75,7 @@ impl Subscriber {
         context
     }
 
-    pub fn new(context: Context, settings: Settings, channel: String) -> Result<Self, Option<AeronError>> {
+    pub fn new(context: Context, settings: &Settings, channel: &String) -> Result<Self, Option<AeronError>> {
         let aeron = Aeron::new(context);
 
         if aeron.is_err() {
@@ -82,16 +83,15 @@ impl Subscriber {
         }
         Ok(Self {
             aeron: RefCell::new(aeron.unwrap()),
-            settings,
-            channel
+            settings: settings.clone(),
+            channel: channel.clone()
         })
     }
 
     pub fn listen(self: &Self) -> Arc<Mutex<Subscription>> {
         let subscription = self.create_subscription().expect("Error creating subscription");
-        let channel_status = subscription.lock().unwrap().channel_status();
-
         if subscription.lock().is_err() {
+            let channel_status = subscription.lock().map(|lock| lock.channel_status()).unwrap_or(-999999);
             info!(
                 "Subscription channel status {}: {}, {:?}",
                 channel_status,
@@ -103,7 +103,8 @@ impl Subscriber {
         subscription
     }
 
-    pub fn recv(self: &Self, subscription: Arc<Mutex<Subscription>>, mut on_new_fragment: &dyn Fn(&AtomicBuffer, i32, i32, &Header) -> ()) {
+    pub fn recv<F>(self: &Self, subscription: Arc<Mutex<Subscription>>, mut on_new_fragment: F)
+        where F: Fn(&AtomicBuffer, Index, Index, &Header) -> () {
         subscription.lock().unwrap().poll(&mut on_new_fragment, 10);
     }
 
@@ -118,7 +119,7 @@ impl Subscriber {
             std::thread::yield_now();
             subscription = aeron.find_subscription(subscription_id);
         }
-        info!("Created new subscription {}", subscription_id);
+        debug!("Created new subscription {}", subscription_id);
         subscription
     }
 }

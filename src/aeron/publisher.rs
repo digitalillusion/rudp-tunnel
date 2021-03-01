@@ -14,7 +14,7 @@ use aeron_rs::{
 };
 use aeron_rs::concurrent::atomic_buffer::{AlignedBuffer, AtomicBuffer};
 use aeron_rs::publication::Publication;
-use log::{error, info};
+use log::{error, info, debug};
 
 use crate::aeron::{Settings, str_to_c};
 
@@ -23,7 +23,7 @@ pub fn error_handler(error: AeronError) {
 }
 
 pub fn on_new_publication_handler(channel: CString, stream_id: i32, session_id: i32, correlation_id: i64) {
-    info!(
+    debug!(
         "Publication: {} (stream={} session={} correlation={})",
         channel.to_str().unwrap(),
         stream_id,
@@ -40,14 +40,14 @@ pub struct Publisher {
 
 impl Publisher {
 
-    pub fn new_context(settings: Settings) -> Context {
+    pub fn new_context(settings: &Settings) -> Context {
         let mut context = Context::new();
 
         if !settings.dir_prefix.is_empty() {
             context.set_aeron_dir(settings.dir_prefix.clone());
         }
 
-        info!("Using CnC file: {}", context.cnc_file_name());
+        debug!("Using CnC file: {}", context.cnc_file_name());
 
         context.set_new_publication_handler(on_new_publication_handler);
         context.set_error_handler(error_handler);
@@ -56,7 +56,7 @@ impl Publisher {
         context
     }
 
-    pub fn new(context: Context, settings: Settings, channel: String) -> Result<Self, Option<AeronError>> {
+    pub fn new(context: Context, settings: &Settings, channel: &String) -> Result<Self, Option<AeronError>> {
         let aeron = Aeron::new(context);
 
         if aeron.is_err() {
@@ -64,16 +64,16 @@ impl Publisher {
         }
         Ok(Self {
             aeron: RefCell::new(aeron.unwrap()),
-            settings,
-            channel,
+            settings: settings.clone(),
+            channel: channel.clone(),
         })
     }
 
     pub fn publish (self: &Self) -> Arc<Mutex<Publication>> {
         let publication = self.create_pubblication().expect("Error creating publication");
-        let channel_status = publication.lock().unwrap().channel_status();
 
         if publication.lock().is_err() {
+            let channel_status = publication.lock().map(|lock| lock.channel_status()).unwrap_or(-999999);
             info!(
                 "Publication channel status {}: {}, {:?}",
                 channel_status,
@@ -85,12 +85,12 @@ impl Publisher {
         publication
     }
 
-    pub fn send(self: &Self, publication: Arc<Mutex<Publication>>, buffer: &[u8], buffer_size: i32) {
+    pub fn send(self: &Self, publication: Arc<Mutex<Publication>>, buffer: &[u8], buffer_size: usize) {
         let aligned_buffer = AlignedBuffer::with_capacity(self.settings.message_length);
         let src_buffer = AtomicBuffer::from_aligned(&aligned_buffer);
         src_buffer.put_bytes(0, buffer);
 
-        let result = publication.lock().unwrap().offer_part(src_buffer, 0, buffer_size);
+        let result = publication.lock().unwrap().offer_part(src_buffer, 0, buffer_size as i32);
 
         if let Err(error) = result {
             error!("Send error: {:?}", error);
@@ -113,7 +113,7 @@ impl Publisher {
             std::thread::yield_now();
             publication = aeron.find_publication(publication_id);
         };
-        info!("Created pubblication {}", publication_id);
+        debug!("Created new pubblication {}", publication_id);
 
         publication
     }
