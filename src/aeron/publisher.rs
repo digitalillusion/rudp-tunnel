@@ -1,6 +1,4 @@
-use std::{
-    ffi::CString,
-};
+use std::{ffi::CString};
 use std::cell::RefCell;
 use std::sync::{Arc, Mutex};
 
@@ -17,6 +15,7 @@ use aeron_rs::publication::Publication;
 use log::{error, info, debug};
 
 use crate::aeron::{Settings, str_to_c};
+use std::time::Duration;
 
 pub fn error_handler(error: AeronError) {
     error!("Error: {:?}", error);
@@ -90,15 +89,23 @@ impl Publisher {
         let src_buffer = AtomicBuffer::from_aligned(&aligned_buffer);
         src_buffer.put_bytes(0, buffer);
 
-        let result = publication.lock().unwrap().offer_part(src_buffer, 0, buffer_size as i32);
-
-        if let Err(error) = result {
-            error!("Send error: {:?}", error);
+        let max_retry = 5;
+        let channel = self.channel.to_owned();
+        let mut tries = 0;
+        while tries < max_retry {
+            tries += 1;
+            let result = publication.clone().lock().unwrap().offer_part(src_buffer, 0, buffer_size as i32);
+            if let Err(error) = result {
+                error!("Send error: {:?}. Retrying ({}/{})", error, tries, max_retry);
+                std::thread::sleep(Duration::from_millis(100));
+            } else {
+                tries = max_retry;
+            }
         }
 
-        if !publication.lock().unwrap().is_connected() {
-            error!("No active subscribers detected on channel {}", self.channel);
-        }
+        if !publication.clone().lock().unwrap().is_connected() {
+            error!("No active subscribers detected on channel {}", channel);
+        };
     }
 
     fn create_pubblication(self: &Self) -> Result<Arc<Mutex<Publication>>, AeronError> {

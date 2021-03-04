@@ -80,7 +80,7 @@ impl Client {
                         }
                         Err(err) => {
                             if err.kind() != io::ErrorKind::WouldBlock {
-                                error!("Error receiving from endpoint {:?}", err)
+                                error!("Error receiving from endpoint: {:?}", err)
                             }
                         }
                     }
