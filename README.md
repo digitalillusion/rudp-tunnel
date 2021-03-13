@@ -9,7 +9,7 @@ Usage
 
 **Embedded driver**
 
-The executable embeds the Java version of the Aeron driver. In order to work correctly, `java` must be available in the path.
+The executable embeds the C 64-bit Aeron driver version 1.31.2 for Linux and Windows
 
 **Startup**
 
@@ -67,15 +67,15 @@ Building
 
 Build requires to have Rust, Cargo and Cross installed. They can be installed by [rustup](https://rustup.rs/)
 
-**Building a development version**
+**Building a 64-bit development version**
 
     cargo build
 
-**Building a release**
+**Building a 64-bit release**
 
     cargo build --release
 
-**Building a Windows release**
+**Building a 64-bit Windows release**
 
     cross build --target x86_64-pc-windows-gnu --release
 
@@ -134,11 +134,10 @@ Meanwhile, all the other rudp-tunnel clients will connect to the rudp-tunnel ser
 
     ipxnet connect 127.0.0.1 19901
 
-
 References
 ----------
 
-This implementation takes wide inspiration from the work described in [Aeron For The Working Programmer](http://www.io7m.com/documents/aeron-guide/). 
+This implementation takes wide inspiration from the work described in [Aeron For The Working Programmer](http://www.io7m.com/documents/aeron-guide/).
 
 
 License (See LICENSE file for full license)
