@@ -9,7 +9,7 @@ Usage
 
 **Embedded driver**
 
-The executable embeds the C 64-bit Aeron driver version 1.31.2 for Linux and Windows
+The executable embeds the Java version 1.34.0 of the Aeron driver. In order to work correctly, `java` must be available in the path.
 
 **Startup**
 

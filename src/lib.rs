@@ -62,24 +62,19 @@ pub fn run(mode: Mode, args: Arguments) {
         info!("Skipping driver launch...");
         start_instance(running, mode, &args);
     } else {
-        let driver_path = if cfg!(target_os = "windows") {
-            extract_driver("aeron_driver.dll", include_bytes!("bin/aeron_driver.dll"));
-            extract_driver("aeronmd.exe", include_bytes!("bin/aeronmd.exe"))
-        } else {
-            extract_driver("aeronmd", include_bytes!("bin/aeronmd"))
-        };
+        let driver_path = extract_driver();
 
-        let mut command = String::from(driver_path.as_str());
+        let mut command = String::from("java -cp ");
+        command.push_str(driver_path.as_str());
+        command.push_str(format!(" -Daeron.dir={} io.aeron.driver.MediaDriver", args.dir_prefix).as_str());
+
+        info!("Launching Aeron driver: {}", command.to_owned());
         let mut child = if cfg!(target_os = "windows") {
-            info!("Launching Aeron Windows driver: {}", command.to_owned());
             Command::new("cmd")
                 .args(&["/C", command.as_str()])
                 .spawn()
                 .expect("Error spawning Aeron driver process")
         } else {
-            command.push_str(format!(" -Daeron.dir={}", args.dir_prefix).as_str());
-            let command = format!("chmod +x {} && {}", driver_path.as_str(), command.as_str());
-            info!("Launching Aeron Linux driver: {}", command.to_owned());
             Command::new("sh")
                 .arg("-c")
                 .arg(command.as_str())
@@ -107,10 +102,11 @@ fn start_instance(running: Arc<AtomicBool>, mode: Mode, args: &Arguments) {
     }
 }
 
-fn extract_driver(driver_filename: &str, bytes: &[u8]) -> String {
+fn extract_driver() -> String {
+    let bytes = include_bytes!("bin/aeron-all-1.34.0.jar");
     let mut driver_path = temp_dir();
-    driver_path.push(driver_filename);
-    let mut file = File::create(driver_path.to_owned()).expect("Error extracting Aeron driver");
+    driver_path.push("aeron-driver.jar");
+    let mut file = File::create(driver_path.to_owned()).expect("Error extracting Aeron driver jar");
     file.write_all(bytes).unwrap();
     String::from(driver_path.to_str().unwrap())
 }
