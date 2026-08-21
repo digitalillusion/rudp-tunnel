@@ -5,8 +5,8 @@ use std::env::temp_dir;
 use std::fs::File;
 use std::io::Write;
 use std::process::Command;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use std::time::Duration;
 
 use log::info;
@@ -16,8 +16,8 @@ use crate::server::Server;
 use std::net::UdpSocket;
 
 mod aeron;
-mod messages;
 mod client;
+mod messages;
 mod server;
 
 lazy_static! {
@@ -30,7 +30,6 @@ impl Timeout {
     pub const CONNECTION_SECONDS: u64 = 90;
     pub const SESSION_SECONDS: u64 = 600;
 }
-
 
 pub enum Mode {
     Client,
@@ -66,12 +65,18 @@ pub fn run(mode: Mode, args: Arguments) {
 
         let mut command = String::from("java -cp ");
         command.push_str(driver_path.as_str());
-        command.push_str(format!(" -Daeron.dir={} io.aeron.driver.MediaDriver", args.dir_prefix).as_str());
+        command.push_str(
+            format!(
+                " -Daeron.dir={} io.aeron.driver.MediaDriver",
+                args.dir_prefix
+            )
+            .as_str(),
+        );
 
         info!("Launching Aeron driver: {}", command.to_owned());
         let mut child = if cfg!(target_os = "windows") {
             Command::new("cmd")
-                .args(&["/C", command.as_str()])
+                .args(["/C", command.as_str()])
                 .spawn()
                 .expect("Error spawning Aeron driver process")
         } else {
@@ -90,8 +95,8 @@ pub fn run(mode: Mode, args: Arguments) {
         ctrlc::set_handler(move || {
             running.store(false, Ordering::SeqCst);
             child.kill().unwrap();
-        }).unwrap();
-
+        })
+        .unwrap();
     }
 }
 
@@ -106,7 +111,7 @@ fn extract_driver() -> String {
     let bytes = include_bytes!("bin/aeron-all-1.34.0.jar");
     let mut driver_path = temp_dir();
     driver_path.push("aeron-driver.jar");
-    let mut file = File::create(driver_path.to_owned()).expect("Error extracting Aeron driver jar");
+    let mut file = File::create(&driver_path).expect("Error extracting Aeron driver jar");
     file.write_all(bytes).unwrap();
     String::from(driver_path.to_str().unwrap())
 }
@@ -115,12 +120,16 @@ fn attach_endpoint(args: &Arguments) -> UdpSocket {
     let endpoint = args.endpoint.to_owned();
     let socket = if args.listen {
         let socket = UdpSocket::bind("0.0.0.0:0").unwrap();
-        socket.connect(endpoint.to_owned()).expect("Failed to connect to endpoint");
+        socket
+            .connect(endpoint.to_owned())
+            .expect("Failed to connect to endpoint");
         socket
     } else {
         UdpSocket::bind(endpoint).expect("Error binding socket input")
     };
 
-    socket.set_nonblocking(true).expect("Failed to enter non-blocking mode");
+    socket
+        .set_nonblocking(true)
+        .expect("Failed to enter non-blocking mode");
     socket
 }

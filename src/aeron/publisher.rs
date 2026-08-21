@@ -1,27 +1,28 @@
-use std::{ffi::CString};
 use std::cell::RefCell;
+use std::ffi::CString;
 use std::sync::{Arc, Mutex};
 
-use aeron_rs::{
-    aeron::Aeron,
-    concurrent::{
-        status::status_indicator_reader::channel_status_to_str,
-    },
-    context::Context,
-    utils::errors::AeronError,
-};
 use aeron_rs::concurrent::atomic_buffer::{AlignedBuffer, AtomicBuffer};
 use aeron_rs::publication::Publication;
-use log::{error, info, debug};
+use aeron_rs::{
+    aeron::Aeron, concurrent::status::status_indicator_reader::channel_status_to_str,
+    context::Context, utils::errors::AeronError,
+};
+use log::{debug, error, info};
 
-use crate::aeron::{Settings, str_to_c};
+use crate::aeron::{str_to_c, Settings};
 use std::time::Duration;
 
 pub fn error_handler(error: AeronError) {
     error!("Error: {:?}", error);
 }
 
-pub fn on_new_publication_handler(channel: CString, stream_id: i32, session_id: i32, correlation_id: i64) {
+pub fn on_new_publication_handler(
+    channel: CString,
+    stream_id: i32,
+    session_id: i32,
+    correlation_id: i64,
+) {
     debug!(
         "Publication: {} (stream={} session={} correlation={})",
         channel.to_str().unwrap(),
@@ -38,7 +39,6 @@ pub struct Publisher {
 }
 
 impl Publisher {
-
     pub fn new_context(settings: &Settings) -> Context {
         let mut context = Context::new();
 
@@ -55,7 +55,11 @@ impl Publisher {
         context
     }
 
-    pub fn new(context: Context, settings: &Settings, channel: &String) -> Result<Self, Option<AeronError>> {
+    pub fn new(
+        context: Context,
+        settings: &Settings,
+        channel: &str,
+    ) -> Result<Self, Option<AeronError>> {
         let aeron = Aeron::new(context);
 
         if aeron.is_err() {
@@ -64,15 +68,20 @@ impl Publisher {
         Ok(Self {
             aeron: RefCell::new(aeron.unwrap()),
             settings: settings.clone(),
-            channel: channel.clone(),
+            channel: channel.to_owned(),
         })
     }
 
-    pub fn publish (self: &Self) -> Arc<Mutex<Publication>> {
-        let publication = self.create_pubblication().expect("Error creating publication");
+    pub fn publish(&self) -> Arc<Mutex<Publication>> {
+        let publication = self
+            .create_pubblication()
+            .expect("Error creating publication");
 
         if publication.lock().is_err() {
-            let channel_status = publication.lock().map(|lock| lock.channel_status()).unwrap_or(-999999);
+            let channel_status = publication
+                .lock()
+                .map(|lock| lock.channel_status())
+                .unwrap_or(-999999);
             info!(
                 "Publication channel status {}: {}, {:?}",
                 channel_status,
@@ -84,7 +93,7 @@ impl Publisher {
         publication
     }
 
-    pub fn send(self: &Self, publication: Arc<Mutex<Publication>>, buffer: &[u8], buffer_size: usize) {
+    pub fn send(&self, publication: Arc<Mutex<Publication>>, buffer: &[u8], buffer_size: usize) {
         let aligned_buffer = AlignedBuffer::with_capacity(self.settings.message_length);
         let src_buffer = AtomicBuffer::from_aligned(&aligned_buffer);
         src_buffer.put_bytes(0, buffer);
@@ -94,9 +103,17 @@ impl Publisher {
         let mut tries = 0;
         while tries < max_retry {
             tries += 1;
-            let result = publication.clone().lock().unwrap().offer_part(src_buffer, 0, buffer_size as i32);
+            let result =
+                publication
+                    .clone()
+                    .lock()
+                    .unwrap()
+                    .offer_part(src_buffer, 0, buffer_size as i32);
             if let Err(error) = result {
-                error!("Send error: {:?}. Retrying ({}/{})", error, tries, max_retry);
+                error!(
+                    "Send error: {:?}. Retrying ({}/{})",
+                    error, tries, max_retry
+                );
                 std::thread::sleep(Duration::from_millis(100));
             } else {
                 tries = max_retry;
@@ -108,7 +125,7 @@ impl Publisher {
         };
     }
 
-    fn create_pubblication(self: &Self) -> Result<Arc<Mutex<Publication>>, AeronError> {
+    fn create_pubblication(&self) -> Result<Arc<Mutex<Publication>>, AeronError> {
         let mut aeron = self.aeron.borrow_mut();
         // add the publication to start the process
         let publication_id = aeron
@@ -119,7 +136,7 @@ impl Publisher {
         while publication.is_err() {
             std::thread::yield_now();
             publication = aeron.find_publication(publication_id);
-        };
+        }
         debug!("Created new pubblication {}", publication_id);
 
         publication

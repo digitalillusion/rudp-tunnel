@@ -1,28 +1,30 @@
 use crate::aeron::publisher::Publisher;
-use std::sync::{Arc, Mutex};
-use aeron_rs::publication::Publication;
 use crate::aeron::subscriber::Subscriber;
-use aeron_rs::subscription::Subscription;
-use std::time::{SystemTime, Duration};
-use crate::aeron::{Settings, subscriber, instance_subscriber, instance_publisher};
+use crate::aeron::{instance_publisher, instance_subscriber, subscriber, Settings};
 use aeron_rs::image::Image;
+use aeron_rs::publication::Publication;
+use aeron_rs::subscription::Subscription;
+use std::sync::{Arc, Mutex};
+use std::time::{Duration, SystemTime};
 
-use log::{debug};
+use log::debug;
 
-use super::{DISCONNECTED_SESSIONS, CONNECTED_SESSIONS};
-use std::net::SocketAddr;
-use aeron_rs::concurrent::atomic_buffer::AtomicBuffer;
-use aeron_rs::utils::types::Index;
-use aeron_rs::concurrent::logbuffer::header::Header;
-use std::ops::Add;
+use super::{CONNECTED_SESSIONS, DISCONNECTED_SESSIONS};
 use crate::Timeout;
+use aeron_rs::concurrent::atomic_buffer::AtomicBuffer;
+use aeron_rs::concurrent::logbuffer::header::Header;
+use aeron_rs::utils::types::Index;
+use std::net::SocketAddr;
+use std::ops::Add;
 
 #[derive(Clone)]
 pub struct ClientSlot {
     stream_id: i32,
     publisher_session_id: i32,
     subscriber_session_id: Arc<Mutex<i32>>,
+    #[allow(dead_code)]
     port: usize,
+    #[allow(dead_code)]
     control: usize,
     publisher: Arc<Publisher>,
     publication: Arc<Mutex<Publication>>,
@@ -33,13 +35,19 @@ pub struct ClientSlot {
 }
 
 impl ClientSlot {
-
-    pub fn new(settings: &Settings, channel_forward: String, channel_backward: String, port: usize, control: usize) -> Self {
+    #[allow(clippy::arc_with_non_send_sync)]
+    pub fn new(
+        settings: &Settings,
+        channel_forward: String,
+        channel_backward: String,
+        port: usize,
+        control: usize,
+    ) -> Self {
         let mut subscriber_context = Subscriber::new_context(settings);
         subscriber_context.set_unavailable_image_handler(on_unavailable_image);
         subscriber_context.set_available_image_handler(on_available_image);
         let (client_subscriber, client_subscription) =
-            instance_subscriber(subscriber_context,  settings, &channel_forward);
+            instance_subscriber(subscriber_context, settings, &channel_forward);
 
         let publisher_context = Publisher::new_context(settings);
         let (client_publisher, client_publication) =
@@ -55,8 +63,10 @@ impl ClientSlot {
             publication: client_publication,
             subscriber: Arc::new(client_subscriber),
             subscription: client_subscription,
-            timeout: Arc::new(Mutex::new(SystemTime::now().add(Duration::from_secs(Timeout::CONNECTION_SECONDS)))),
-            closed: Arc::new(Mutex::new(false))
+            timeout: Arc::new(Mutex::new(
+                SystemTime::now().add(Duration::from_secs(Timeout::CONNECTION_SECONDS)),
+            )),
+            closed: Arc::new(Mutex::new(false)),
         }
     }
 
@@ -65,12 +75,20 @@ impl ClientSlot {
     }
 
     pub fn has_subscribers_on_session(&self, session_id: i32) -> bool {
-        *self.subscriber_session_id.lock().unwrap() == session_id || self.subscription.lock().unwrap().image_by_session_id(session_id).is_some()
+        *self.subscriber_session_id.lock().unwrap() == session_id
+            || self
+                .subscription
+                .lock()
+                .unwrap()
+                .image_by_session_id(session_id)
+                .is_some()
     }
 
     pub fn activate(&self, session_id: i32) {
         *self.subscriber_session_id.lock().unwrap() = session_id;
-        *self.timeout.lock().unwrap() = SystemTime::now().checked_add(Duration::from_secs(Timeout::SESSION_SECONDS)).unwrap();
+        *self.timeout.lock().unwrap() = SystemTime::now()
+            .checked_add(Duration::from_secs(Timeout::SESSION_SECONDS))
+            .unwrap();
     }
 
     pub fn is_timeout_elapsed(&self) -> bool {
@@ -78,15 +96,24 @@ impl ClientSlot {
     }
 
     pub fn publish(&self, slice_msg: &mut [u8], slice_size: usize, origin: SocketAddr) {
-        *self.timeout.lock().unwrap() = SystemTime::now().add(Duration::from_secs(Timeout::SESSION_SECONDS));
-        debug!("Publishing on stream {} from session {} {} bytes received from endpoint {:?}", self.stream_id, self.publisher_session_id, slice_size, origin);
-        self.publisher.send(self.publication.to_owned(), slice_msg, slice_size)
+        *self.timeout.lock().unwrap() =
+            SystemTime::now().add(Duration::from_secs(Timeout::SESSION_SECONDS));
+        debug!(
+            "Publishing on stream {} from session {} {} bytes received from endpoint {:?}",
+            self.stream_id, self.publisher_session_id, slice_size, origin
+        );
+        self.publisher
+            .send(self.publication.to_owned(), slice_msg, slice_size)
     }
 
     pub fn receive<F>(&self, on_new_fragment: F)
-        where F: Fn(&AtomicBuffer, Index, Index, &Header) -> () {
-        *self.timeout.lock().unwrap() = SystemTime::now().add(Duration::from_secs(Timeout::SESSION_SECONDS));
-        self.subscriber.recv(self.subscription.to_owned(), on_new_fragment);
+    where
+        F: Fn(&AtomicBuffer, Index, Index, &Header),
+    {
+        *self.timeout.lock().unwrap() =
+            SystemTime::now().add(Duration::from_secs(Timeout::SESSION_SECONDS));
+        self.subscriber
+            .recv(self.subscription.to_owned(), on_new_fragment);
     }
 
     pub fn close(&self) {
@@ -98,15 +125,17 @@ impl ClientSlot {
     pub fn is_closed(&self) -> bool {
         *self.closed.lock().unwrap()
     }
-
 }
 
-fn on_unavailable_image(image: &Image)  {
+fn on_unavailable_image(image: &Image) {
     subscriber::unavailable_image_handler(image);
-    DISCONNECTED_SESSIONS.lock().unwrap().push(image.session_id());
+    DISCONNECTED_SESSIONS
+        .lock()
+        .unwrap()
+        .push(image.session_id());
 }
 
-fn on_available_image(image: &Image)  {
+fn on_available_image(image: &Image) {
     subscriber::available_image_handler(image);
     CONNECTED_SESSIONS.lock().unwrap().push(image.session_id());
 }

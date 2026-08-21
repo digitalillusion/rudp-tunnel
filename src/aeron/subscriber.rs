@@ -1,28 +1,26 @@
-use std::{
-    ffi::CString,
-};
 use std::cell::RefCell;
+use std::ffi::CString;
 use std::sync::{Arc, Mutex};
 
-use aeron_rs::{
-    aeron::Aeron,
-    concurrent::{
-        status::status_indicator_reader::channel_status_to_str,
-    },
-    context::Context,
-    image::Image,
-    utils::{errors::AeronError},
-};
 use aeron_rs::concurrent::atomic_buffer::AtomicBuffer;
 use aeron_rs::concurrent::logbuffer::header::Header;
 use aeron_rs::subscription::Subscription;
-use log::{error, info, debug};
+use aeron_rs::{
+    aeron::Aeron, concurrent::status::status_indicator_reader::channel_status_to_str,
+    context::Context, image::Image, utils::errors::AeronError,
+};
+use log::{debug, error, info};
 
-use crate::aeron::{Settings, str_to_c};
+use crate::aeron::{str_to_c, Settings};
 use aeron_rs::utils::types::Index;
 
 pub fn on_new_subscription_handler(channel: CString, stream_id: i32, correlation_id: i64) {
-    debug!("Subscription: {} (stream={}, correlation={})", channel.to_str().unwrap(), stream_id, correlation_id);
+    debug!(
+        "Subscription: {} (stream={}, correlation={})",
+        channel.to_str().unwrap(),
+        stream_id,
+        correlation_id
+    );
 }
 
 pub fn available_image_handler(image: &Image) {
@@ -56,7 +54,6 @@ pub struct Subscriber {
 }
 
 impl Subscriber {
-
     pub fn new_context(settings: &Settings) -> Context {
         let mut context = Context::new();
 
@@ -75,7 +72,11 @@ impl Subscriber {
         context
     }
 
-    pub fn new(context: Context, settings: &Settings, channel: &String) -> Result<Self, Option<AeronError>> {
+    pub fn new(
+        context: Context,
+        settings: &Settings,
+        channel: &str,
+    ) -> Result<Self, Option<AeronError>> {
         let aeron = Aeron::new(context);
 
         if aeron.is_err() {
@@ -84,14 +85,19 @@ impl Subscriber {
         Ok(Self {
             aeron: RefCell::new(aeron.unwrap()),
             settings: settings.clone(),
-            channel: channel.clone()
+            channel: channel.to_owned(),
         })
     }
 
-    pub fn listen(self: &Self) -> Arc<Mutex<Subscription>> {
-        let subscription = self.create_subscription().expect("Error creating subscription");
+    pub fn listen(&self) -> Arc<Mutex<Subscription>> {
+        let subscription = self
+            .create_subscription()
+            .expect("Error creating subscription");
         if subscription.lock().is_err() {
-            let channel_status = subscription.lock().map(|lock| lock.channel_status()).unwrap_or(-999999);
+            let channel_status = subscription
+                .lock()
+                .map(|lock| lock.channel_status())
+                .unwrap_or(-999999);
             info!(
                 "Subscription channel status {}: {}, {:?}",
                 channel_status,
@@ -103,12 +109,14 @@ impl Subscriber {
         subscription
     }
 
-    pub fn recv<F>(self: &Self, subscription: Arc<Mutex<Subscription>>, mut on_new_fragment: F)
-        where F: Fn(&AtomicBuffer, Index, Index, &Header) -> () {
+    pub fn recv<F>(&self, subscription: Arc<Mutex<Subscription>>, mut on_new_fragment: F)
+    where
+        F: Fn(&AtomicBuffer, Index, Index, &Header),
+    {
         subscription.lock().unwrap().poll(&mut on_new_fragment, 10);
     }
 
-    fn create_subscription(self: &Self) -> Result<Arc<Mutex<Subscription>>, AeronError> {
+    fn create_subscription(&self) -> Result<Arc<Mutex<Subscription>>, AeronError> {
         let mut aeron = self.aeron.borrow_mut();
         let subscription_id = aeron
             .add_subscription(str_to_c(&self.channel), self.settings.stream_id)

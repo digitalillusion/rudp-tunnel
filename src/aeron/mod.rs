@@ -1,16 +1,14 @@
 use std::ffi::CString;
 
-use aeron_rs::{
-    example_config::{DEFAULT_STREAM_ID},
-};
+use aeron_rs::example_config::DEFAULT_STREAM_ID;
 
+use crate::aeron::publisher::Publisher;
+use crate::aeron::subscriber::Subscriber;
 use crate::Arguments;
 use aeron_rs::context::Context;
-use crate::aeron::publisher::Publisher;
-use std::sync::{Arc, Mutex};
 use aeron_rs::publication::Publication;
-use crate::aeron::subscriber::Subscriber;
 use aeron_rs::subscription::Subscription;
+use std::sync::{Arc, Mutex};
 
 pub(crate) mod publisher;
 pub(crate) mod subscriber;
@@ -19,9 +17,12 @@ pub(crate) mod subscriber;
 pub struct Settings {
     dir_prefix: String,
     stream_id: i32,
+    #[allow(dead_code)]
     number_of_warmup_messages: i64,
+    #[allow(dead_code)]
     number_of_messages: i64,
     pub message_length: i32,
+    #[allow(dead_code)]
     linger_timeout_ms: u64,
 }
 
@@ -42,16 +43,24 @@ pub fn str_to_c(val: &str) -> CString {
     CString::new(val).expect("Error converting str to CString")
 }
 
-pub fn instance_publisher(context: Context, settings: &Settings, channel: &String) -> (Publisher, Arc<Mutex<Publication>>) {
+pub fn instance_publisher(
+    context: Context,
+    settings: &Settings,
+    channel: &str,
+) -> (Publisher, Arc<Mutex<Publication>>) {
     let publisher = Publisher::new(context, settings, channel)
-        .expect(format!("Error creating publisher on channel {}", channel).as_str());
+        .unwrap_or_else(|_| panic!("Error creating publisher on channel {}", channel));
     let publication = publisher.publish();
     (publisher, publication)
 }
 
-pub fn instance_subscriber(context: Context, settings: &Settings, channel: &String) -> (Subscriber, Arc<Mutex<Subscription>>) {
+pub fn instance_subscriber(
+    context: Context,
+    settings: &Settings,
+    channel: &str,
+) -> (Subscriber, Arc<Mutex<Subscription>>) {
     let subscriber = Subscriber::new(context, settings, channel)
-        .expect(format!("Error creating subscriber on channel {}", channel).as_str());
+        .unwrap_or_else(|_| panic!("Error creating subscriber on channel {}", channel));
     let subscription = subscriber.listen();
     (subscriber, subscription)
 }

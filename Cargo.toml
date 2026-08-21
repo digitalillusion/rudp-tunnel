@@ -1,21 +1,25 @@
 [package]
 name = "rudp-tunnel"
-version = "0.1.2"
+version = "0.1.3"
 authors = ["adriano.dalpane <adriano.dalpane@gmail.com>"]
-edition = "2018"
+edition = "2021"
+license = "Apache-2.0"
+description = "A utility to upgrade a UDP stream to reliable UDP through an Aeron tunnel"
+readme = "README.md"
+repository = "https://github.com/digitalillusion/rudp-tunnel"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-getopts = "0.2.21"
-aeron-rs = "0.1.3"
-ctrlc = "3.1.7  "
-chrono = "0.4.11"
-whoami = "1.0.1"
-log = "0.4.11"
-env_logger = "0.8.2"
-lazy_static = "1.4.0"
+getopts = "0.2.24"
+aeron-rs = "0.1.8"
+ctrlc = "3.5.2"
+chrono = "0.4.45"
+whoami = "1.6.1"
+log = "0.4.33"
+env_logger = "0.11.11"
+lazy_static = "1.5.0"
 platform-dirs = "0.3.0"
-serde = { version = "1.0", features = ["derive"] }
-bincode = "1.2.1"
-rand = "0.8.3"
+serde = { version = "1.0.229", features = ["derive"] }
+bincode = "1.3.3"
+rand = "0.8.7"
