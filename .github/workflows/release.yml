@@ -38,7 +38,7 @@ jobs:
             target: aarch64-apple-darwin
             binary_name: rudp-tunnel
             asset_type: tar.gz
-          - os: macos-13
+          - os: macos-latest
             target: x86_64-apple-darwin
             binary_name: rudp-tunnel
             asset_type: tar.gz
@@ -76,8 +76,9 @@ jobs:
         run: |
           TAG="${{ steps.tag.outputs.name }}"
           ARCHIVE="rudp-tunnel-${TAG}-${{ matrix.target }}.tar.gz"
+          cp README.md LICENSE target/${{ matrix.target }}/release/
           cd target/${{ matrix.target }}/release
-          tar -czf "../../../${ARCHIVE}" ${{ matrix.binary_name }}
+          tar -czf "../../../${ARCHIVE}" ${{ matrix.binary_name }} README.md LICENSE
           cd ../../..
           echo "ARCHIVE_PATH=${ARCHIVE}" >> $GITHUB_ENV
 
@@ -87,8 +88,9 @@ jobs:
         run: |
           TAG="${{ steps.tag.outputs.name }}"
           ARCHIVE="rudp-tunnel-${TAG}-${{ matrix.target }}.zip"
+          cp README.md LICENSE target/${{ matrix.target }}/release/
           cd target/${{ matrix.target }}/release
-          7z a "../../../${ARCHIVE}" ${{ matrix.binary_name }}
+          7z a "../../../${ARCHIVE}" ${{ matrix.binary_name }} README.md LICENSE
           cd ../../..
           echo "ARCHIVE_PATH=${ARCHIVE}" >> $GITHUB_ENV
 
