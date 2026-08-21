@@ -63,11 +63,11 @@ pub fn run(mode: Mode, args: Arguments) {
     } else {
         let driver_path = extract_driver();
 
-        let mut command = String::from("java -cp ");
+        let mut command = String::from("java --add-opens=java.base/sun.nio.ch=ALL-UNNAMED --add-opens=java.base/jdk.internal.misc=ALL-UNNAMED --add-opens=java.base/java.util.zip=ALL-UNNAMED -cp ");
         command.push_str(driver_path.as_str());
         command.push_str(
             format!(
-                " -Daeron.dir={} io.aeron.driver.MediaDriver",
+                " -Daeron.dir.delete.on.start=true -Daeron.dir={} io.aeron.driver.MediaDriver",
                 args.dir_prefix
             )
             .as_str(),
@@ -108,7 +108,7 @@ fn start_instance(running: Arc<AtomicBool>, mode: Mode, args: &Arguments) {
 }
 
 fn extract_driver() -> String {
-    let bytes = include_bytes!("bin/aeron-all-1.34.0.jar");
+    let bytes = include_bytes!("bin/aeron-all-1.48.0.jar");
     let mut driver_path = temp_dir();
     driver_path.push("aeron-driver.jar");
     let mut file = File::create(&driver_path).expect("Error extracting Aeron driver jar");
