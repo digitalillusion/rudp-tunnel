@@ -1,0 +1,148 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (e.g. v0.1.3)"
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build-release:
+    name: Build (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            binary_name: rudp-tunnel
+            asset_type: tar.gz
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            binary_name: rudp-tunnel.exe
+            asset_type: zip
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            binary_name: rudp-tunnel
+            asset_type: tar.gz
+          - os: macos-13
+            target: x86_64-apple-darwin
+            binary_name: rudp-tunnel
+            asset_type: tar.gz
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+
+      - name: Build release binary
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Determine tag name
+        id: tag
+        shell: bash
+        run: |
+          if [ -n "${{ inputs.tag }}" ]; then
+            echo "name=${{ inputs.tag }}" >> $GITHUB_OUTPUT
+          else
+            echo "name=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Package asset (Unix)
+        if: matrix.asset_type == 'tar.gz'
+        shell: bash
+        run: |
+          TAG="${{ steps.tag.outputs.name }}"
+          ARCHIVE="rudp-tunnel-${TAG}-${{ matrix.target }}.tar.gz"
+          cd target/${{ matrix.target }}/release
+          tar -czf "../../../${ARCHIVE}" ${{ matrix.binary_name }}
+          cd ../../..
+          echo "ARCHIVE_PATH=${ARCHIVE}" >> $GITHUB_ENV
+
+      - name: Package asset (Windows)
+        if: matrix.asset_type == 'zip'
+        shell: bash
+        run: |
+          TAG="${{ steps.tag.outputs.name }}"
+          ARCHIVE="rudp-tunnel-${TAG}-${{ matrix.target }}.zip"
+          cd target/${{ matrix.target }}/release
+          7z a "../../../${ARCHIVE}" ${{ matrix.binary_name }}
+          cd ../../..
+          echo "ARCHIVE_PATH=${ARCHIVE}" >> $GITHUB_ENV
+
+      - name: Generate SHA-256 checksum
+        shell: bash
+        run: |
+          if command -v sha256sum >/dev/null 2>&1; then
+            sha256sum "${ARCHIVE_PATH}" > "${ARCHIVE_PATH}.sha256"
+          elif command -v shasum >/dev/null 2>&1; then
+            shasum -a 256 "${ARCHIVE_PATH}" > "${ARCHIVE_PATH}.sha256"
+          fi
+
+      - name: Upload release artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: artifacts-${{ matrix.target }}
+          path: |
+            rudp-tunnel-*.*
+          if-no-files-found: error
+
+  publish-release:
+    name: Publish GitHub Release
+    needs: build-release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all built artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
+
+      - name: Determine tag name
+        id: tag
+        shell: bash
+        run: |
+          if [ -n "${{ inputs.tag }}" ]; then
+            echo "name=${{ inputs.tag }}" >> $GITHUB_OUTPUT
+          else
+            echo "name=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: List assets to publish
+        run: |
+          ls -lah release-assets
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.name }}
+          name: Release ${{ steps.tag.outputs.name }}
+          files: release-assets/*
+          generate_release_notes: true
+          draft: false
+          prerelease: false
