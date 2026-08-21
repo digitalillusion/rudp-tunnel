@@ -93,7 +93,7 @@ fn parse_args() -> Option<(Mode, Arguments)> {
                 .unwrap_or(String::new());
             let mtu = matches
                 .opt_str("mtu")
-                .unwrap_or(String::from("128"))
+                .unwrap_or(String::from("1500"))
                 .parse()
                 .expect("Cannot parse mtu");
             let max_clients = matches
@@ -109,8 +109,8 @@ fn parse_args() -> Option<(Mode, Arguments)> {
                 interface: interface.to_owned(),
                 sforward: format!("endpoint=0.0.0.0:{}{}", port, interface),
                 sbackward: format!(
-                    "endpoint={}:{}{}|control={}:{}|control-mode=dynamic",
-                    public, port, interface, public, control
+                    "control={}:{}{}|control-mode=dynamic",
+                    public, control, interface
                 ),
                 cforward: format!("endpoint={}:{}{}", server, port, interface),
                 cbackward: format!(

@@ -49,7 +49,7 @@ At this moment, the services at the two endpoints are able to communicate with e
                             Ignored if SERVER is specified. Defaults to 0.0.0.0
         -i, --interface INTERFACE
                             Routing interface.
-        -m, --mtu MTU       Packets Maximum Transmission Unit. Defaults to 128
+        -m, --mtu MTU       Packets Maximum Transmission Unit. Defaults to 1500
                             (bytes)
         -x, --maxclients MAXCLIENTS
                             Maximum number of simultaneously connected clients.

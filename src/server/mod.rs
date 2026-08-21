@@ -267,8 +267,8 @@ impl Server {
 
         let channel_forward = format!("aeron:udp?endpoint=0.0.0.0:{}{}", port, self.args.interface);
         let channel_backward = format!(
-            "aeron:udp?endpoint={}:{}{}|control={}:{}|control-mode=dynamic",
-            self.args.public, port, self.args.interface, self.args.public, control
+            "aeron:udp?control={}:{}{}|control-mode=dynamic",
+            self.args.public, control, self.args.interface
         );
         let client_slot = ClientSlot::new(
             &self.settings,
